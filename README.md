@@ -4,21 +4,28 @@
 ![Python 3.10](https://img.shields.io/badge/Python-3.10-blue.svg)
 ![PyTorch 2.0.1](https://img.shields.io/badge/PyTorch-2.0.1-red.svg)
 
-<!-- Placeholder for teaser image -->
-<p align="center">
-  <img src="docs/images/Abstraction.png" alt="Summary" width="60%">
-</p>
-<p align="center">
-  <img src="docs/images/teaser_dynamics_equivalence.png" alt="Teaser Image" width="60%">
-</p>
-
 This repository contains the code for our ICML 2024 paper:
 
 **"[Sign Gradient Descent-based Neuronal Dynamics: ANN-to-SNN Conversion Beyond ReLU Network](https://arxiv.org/abs/2407.01645)"**
 
 ## Introduction
 
-Spiking neural network (SNN) is studied in multidisciplinary domains to (i) enable order-of-magnitudes energy-efficient AI inference and (ii) computationally simulate neuro-scientific mechanisms. The lack of discrete theory obstructs the practical application of SNN by limiting its performance and nonlinearity support. We present a new optimization-theoretic perspective of the discrete dynamics of spiking neurons. We prove that a discrete dynamical system of simple integrate-and-fire models approximates the sub-gradient method over unconstrained optimization problems. We practically extend our theory to introduce a novel sign gradient descent (signGD)-based neuronal dynamics that can (i) approximate diverse nonlinearities beyond ReLU and (ii) advance ANN-to-SNN conversion performance in low time steps. Experiments on large-scale datasets show that our technique achieves (i) state-of-the-art performance in ANN-to-SNN conversion and (ii) is the first to convert new DNN architectures, e.g., ConvNext, MLP-Mixer, and ResMLP.
+Spiking neural network (SNN) is studied in multidisciplinary domains
+to (i) enable order-of-magnitudes energy-efficient AI inference and
+(ii) computationally simulate neuro-scientific mechanisms. The lack of
+discrete theory obstructs the practical application of SNN by limiting
+its performance and nonlinearity support. We present a new
+optimization-theoretic perspective of the discrete dynamics of spiking
+neurons. We prove that a discrete dynamical system of simple
+integrate-and-fire models approximates the sub-gradient method over
+unconstrained optimization problems. We practically extend our theory
+to introduce a novel sign gradient descent (signGD)-based neuronal
+dynamics that can (i) approximate diverse nonlinearities beyond ReLU
+and (ii) advance ANN-to-SNN conversion performance in low time
+steps. Experiments on large-scale datasets show that our technique
+achieves (i) state-of-the-art performance in ANN-to-SNN conversion and
+(ii) is the first to convert new DNN architectures, e.g., ConvNext,
+MLP-Mixer, and ResMLP.
 
 ## Table of Contents
 
@@ -27,17 +34,11 @@ Spiking neural network (SNN) is studied in multidisciplinary domains to (i) enab
   - [Using VSCode Dev Containers](#using-vscode-dev-containers)
   - [Manual Installation](#manual-installation)
 - [Usage](#usage)
-- [Project Structure](#project-structure) 
+- [Project Structure](#project-structure)
 - [License](#license)
 - [Contact](#contact)
 - [Citation](#citation)
 - [Acknowledgements](#acknowledgements)
-
-## Prerequisites
-
-- **Python Version**: The code requires **Python 3.10**.
-- **PyTorch**: Version **2.0.1** with CUDA support.
-- **Operating System**: Linux or Windows with CUDA-compatible GPU.
 
 ## Installation
 
@@ -117,7 +118,7 @@ The repository is organized as follows:
 
 ### Description of Directories
 
-- **data/**: Stores datasets used in the project, such as CIFAR10. 
+- **data/**: Stores datasets used in the project, such as CIFAR10.
 
 - **docs/**: Contains documentation resources, including images and presentation slides that illustrate the concepts and results of the project.
 
@@ -203,16 +204,3 @@ If you find this code useful in your research, please cite our paper:
   year={2024}
 }
 ```
-
-## Acknowledgements
-
-This work was partly supported by the National Research Foundation of Korea (NRF) grant (No. 2022R1A2C3008495) and the Institute of Information & Communications Technology Planning & Evaluation (IITP) grant [NO.2021-0-01343-004, Artificial Intelligence Graduate School Program (Seoul National University)] funded by the Korean government (MSIT).
-
-
----
-
-**Note**: 
-- We currently provide a minimal example to demonstrate the basic functionality of our method. We will gradually add reproducible evaluation scripts and advanced usage examples to help users replicate the results from our paper and apply our method to different architectures.
-- All experiments code should be executed inside the experiments/ directory. This ensures that all configurations, paths, and resources are correctly set up for successful execution.
-
----
