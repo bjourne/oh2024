@@ -1,101 +1,137 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 
+from itertools import islice
+from torch import nn
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from .graph_functional import pattern_matching_transform
 from .graph_functional.transforms import replace_op, fuse_conv_bn, replace_ops_cases
 
-from .core.layer import ScaledOp, BinaryTreeMaxPool2d, DecomposedLayerNorm, DecomposedMultiHeadAttention, multiply_inverse_of_square_root
-torch.fx.wrap("multiply_inverse_of_square_root") # fx.wrap should be at the top of every module 
+from .core.layer import (
+    ScaledOp,
+    BinaryTreeMaxPool2d,
+    DecomposedLayerNorm,
+    DecomposedMultiHeadAttention,
+    multiply_inverse_of_square_root
+)
+from torch.nn import *
+
+torch.fx.wrap("multiply_inverse_of_square_root") # fx.wrap should be at the top of every module
 
 from .core.hook import hook_context, activation_stats_hook
-
 from functools import partial
 
-unary_module_placeholder = nn.Hardtanh
+unary_module_placeholder = Hardtanh
+
+def scale_relu(net):
+    print("Scaling ReLU")
+    net, _ = pattern_matching_transform(
+        net,
+        patterns = [(torch.relu,), (F.relu,), (ReLU,)],
+        graph_transform = replace_op(
+            partial(
+                ScaledOp,
+                op = unary_module_placeholder,
+                scale_transform = lambda x : x
+            ),
+            inherit_args = {'statistics':"activation_stats"}
+        ),
+        inplace = False
+    )
+
+    net, _ = pattern_matching_transform(
+        net,
+        patterns = [(unary_module_placeholder,)],
+        graph_transform = replace_op(ReLU),
+        inplace = False
+    )
+    return net
+
+def collect_activations(net, loader, n_iter):
+    print("collecting activations!")
+    with hook_context(hook_fn = activation_stats_hook) as context:
+        dev = next(net.parameters()).device
+        for index, (x, _) in tqdm(enumerate(loader), desc = 'Collect Activations', total = n_iter):
+            x = x.to(device=dev)
+            net(x)
+            if index > n_iter:
+                break
 
 @torch.no_grad()
-def porting(
-        model,
-        dataloader: DataLoader, 
-        max_activation_iterations:int,
-        scale_relu_with_max_activation:bool,
-    ):
-    assert isinstance(scale_relu_with_max_activation, bool), 'Only bool type is supported for scale_relu_with_max_activation.'
+def porting(net, loader, n_iter, relu_scaling):
+    assert isinstance(relu_scaling, bool)
 
-    model = _fuse_conv_bn(model)
-    model = _decompose_maxpool(model)
-    model = _decompose_layer_norm(model)
-    model = _modularize_relu(model)
-    model = _decompose_multihead_attention(model)
+    net = _fuse_conv_bn(net)
+    net = _decompose_maxpool(net)
+    net = _decompose_layer_norm(net)
+    net = _modularize_relu(net)
+    net = _decompose_multihead_attention(net)
 
-    #model = _modularize_ops_for_analysis(model)
-    #model = _modularize_relu(model)
-
-    if scale_relu_with_max_activation is not None:
-        _collect_activations(model, dataloader=dataloader, max_activation_iterations=max_activation_iterations)
-        model = _scale_relu(model=model)
-    return model
+    if relu_scaling is not None:
+        collect_activations(net, loader, n_iter)
+        net = scale_relu(net)
+    return net
 
 def _fuse_conv_bn(model):
+    print("Fuse conv/bn")
     model, _ = pattern_matching_transform(
-        model, 
+        model,
         patterns = [
-            (nn.Conv1d, nn.BatchNorm1d),
-            (nn.Conv2d, nn.BatchNorm2d),
-            (nn.Conv3d, nn.BatchNorm3d)
+            (Conv1d, BatchNorm1d),
+            (Conv2d, BatchNorm2d),
+            (Conv3d, BatchNorm3d)
         ],
-        graph_transform = fuse_conv_bn(), 
+        graph_transform = fuse_conv_bn(),
         inplace = False
     )
     return model
 
 def _decompose_maxpool(model):
     model, _ = pattern_matching_transform(
-        model, 
-        patterns = [(F.max_pool2d,), (nn.MaxPool2d,)], 
+        model,
+        patterns = [(F.max_pool2d,), (MaxPool2d,)],
         graph_transform = replace_op(
             BinaryTreeMaxPool2d,
-            inherit_args = { 
-                'kernel_size':"kernel_size", 
-                "stride": "stride", 
-                "padding":"padding", 
+            inherit_args = {
+                'kernel_size':"kernel_size",
+                "stride": "stride",
+                "padding":"padding",
                 "dilation" : "dilation"
             }
-        ), 
+        ),
         inplace = False
     )
     return model
 
 def _decompose_layer_norm(model):
     model, _ = pattern_matching_transform(
-        model, 
-        patterns = [(nn.LayerNorm,), (F.layer_norm,)], 
+        model,
+        patterns = [(LayerNorm,), (F.layer_norm,)],
         graph_transform = replace_op(
             DecomposedLayerNorm,
-            inherit_args = { 
-                'normalized_shape':'normalized_shape', 
-                'eps':'eps', 
+            inherit_args = {
+                'normalized_shape':'normalized_shape',
+                'eps':'eps',
                 #'elementwise_affine':'elementwise_affine',
-                'weight':'weight', 
+                'weight':'weight',
                 'bias':'bias',
             }
-        ), 
+        ),
         inplace = False
     )
     return model
 
+# MHA not in article.
 def _decompose_multihead_attention(model):
     model, _ = pattern_matching_transform(
-        model, 
-        patterns = [(nn.MultiheadAttention,)], 
+        model,
+        patterns = [(MultiheadAttention,)],
         graph_transform = replace_op(
             DecomposedMultiHeadAttention,
-            inherit_args = { 
-                'embed_dim': "embed_dim", 
+            inherit_args = {
+                'embed_dim': "embed_dim",
                 'num_heads':'num_heads',
                 'dropout':'dropout',
                 'add_zero_attn':'add_zero_attn',
@@ -110,54 +146,24 @@ def _decompose_multihead_attention(model):
                 '_qkv_same_embed_dim':'_qkv_same_embed_dim',
                 'batch_first':'batch_first',
             }
-        ), 
+        ),
         inplace = False
     )
     return model
 
-def _collect_activations(model, dataloader, max_activation_iterations):
-    with hook_context(hook_fn = activation_stats_hook) as context:
-        device = next(model.parameters()).device
-        for index, (input, _) in tqdm(enumerate(dataloader), desc = 'Collect Activations', total = max_activation_iterations):
-            input = input.to(device=device)
-            
-            _ = model(input)
-            
-            if index > max_activation_iterations: 
-                break 
-        '''
-        for idx, (key, module) in enumerate(dict(model.named_modules()).items()):
-            print(idx, '->', module)
-            if hasattr(module,"activation_stats"):
-                for key, value in module.activation_stats.items():
-                    if isinstance(value, int):
-                        print(key, value)
-                    else:
-                        print(key,value.shape )
-                        if isinstance(module, nn.ReLU):
-                            print(value)
-        '''
-    return
 
-class Square(nn.Module):
+class Square(Module):
     def forward(self, input):
         return torch.square(input)
-class Exp(nn.Module):
+class Exp(Module):
     def forward(self, input):
         return torch.exp(input)
-class Abs(nn.Module):
+class Abs(Module):
     def forward(self, input):
         return torch.abs(input)
-class Div(nn.Module):
+class Div(Module):
     def forward(self, input, other):
         return torch.div(input, other)
-class Matmul(nn.Module):
-    def forward(self, input, other):
-        return torch.matmul(input, other)
-class MultiplyInverseSquareRoot(nn.Module):    
-    def forward(self, x,y):
-        return multiply_inverse_of_square_root(x,y) 
-    
 class Modular(nn.Module):
     def __init__(self, forward_fn):
         super().__init__()
@@ -172,90 +178,22 @@ class ReLUWrapper(nn.Module):
     def forward(self, input, *args, **kwargs):
         return self.fn(input)
 
-def _modularize_ops_for_analysis(model):
-    model, _ = pattern_matching_transform(
-        model, 
-        patterns = [
-                (multiply_inverse_of_square_root,),
-                (torch.square,),
-                (torch.div,),
-                (torch.exp,),
-                (torch.matmul,),
-                (torch.abs,),
-            ], 
-        graph_transform = replace_ops_cases(
-            dest_modules = (
-                MultiplyInverseSquareRoot,
-                Square,
-                Div,
-                Exp,
-                Matmul,
-                Abs,
-            ),
-            cases = (
-                [(multiply_inverse_of_square_root,)],
-                [(torch.square,)], 
-                [(torch.div,)],
-                [(torch.exp,)],
-                [(torch.matmul,)],
-                [(torch.abs,),],
-            ),
-            inherit_kwargs = (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            ),
-        ), 
-        inplace = False,
-        verbose = True,
-    ) 
-
-    return model
-
 def _modularize_relu(model):
     model, _ = pattern_matching_transform(
-        model, 
-        patterns = [(torch.relu,), (F.relu,), (nn.ReLU,)], 
+        model,
+        patterns = [(torch.relu,), (F.relu,), (nn.ReLU,)],
         graph_transform = replace_op(
             unary_module_placeholder
-        ), 
+        ),
         inplace = False
-    ) 
+    )
     model, _ = pattern_matching_transform(
-        model, 
-        patterns = [(unary_module_placeholder,)], 
+        model,
+        patterns = [(unary_module_placeholder,)],
         graph_transform = replace_op(
             #nn.ReLU
             ReLUWrapper
-        ), 
+        ),
         inplace = False
-    ) 
-    return model
-
-def _scale_relu(model):
-    model, _ = pattern_matching_transform(
-        model, 
-        patterns = [(torch.relu,), (F.relu,), (nn.ReLU,)], 
-        graph_transform = replace_op(
-            partial(
-                ScaledOp, 
-                op = unary_module_placeholder, 
-                scale_transform = lambda x : x
-            ),
-            inherit_args = {'statistics':"activation_stats"}
-        ), 
-        inplace = False
-    )    
-    
-    model, _ = pattern_matching_transform(
-        model, 
-        patterns = [(unary_module_placeholder,)], 
-        graph_transform = replace_op(
-            nn.ReLU
-        ), 
-        inplace = False
-    ) 
+    )
     return model

@@ -38,17 +38,17 @@ def convert(
 
     print("<cyan> Porting ANN to Enable Conversion  </cyan>")
     snn_compatible_ann_model = porting(
-        model = ann_model,
-        dataloader = activation_scale_dataloader,
-        max_activation_iterations = max_activation_scale_iterations,
-        scale_relu_with_max_activation = scale_relu_with_max_activation,
+        ann_model,
+        activation_scale_dataloader,
+        max_activation_scale_iterations,
+        scale_relu_with_max_activation
     )
 
     print("<cyan> Converting ANN to SNN </cyan>")
     snn_model = SpikingNeuralNetwork(
         ann_model = snn_compatible_ann_model,
         config = neuronal_dynamics,
-        default_simulation_length= default_simulation_length,
+        default_simulation_length = default_simulation_length,
         sample_data = sample,
         dynamics_type = dynamics_type
     )

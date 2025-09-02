@@ -12,21 +12,20 @@ def setup(stage, config, model):
 
         train_dataset = config.train_dataset(transform = config.preprocessors.train)
         train_dataloader = DataLoader(
-            train_dataset, batch_size= config.batch_size, 
+            train_dataset, batch_size= config.batch_size,
             shuffle=True, drop_last=False, num_workers=4, pin_memory=True
         )
         snn_model, ported_ann_model, sample = convert(
-            ann_model = model, 
+            ann_model = model,
             neuronal_dynamics = config.neuronal_dynamics,
             dynamics_type = config.dynamics_type,
-            default_simulation_length = config.default_simulation_length, 
+            default_simulation_length = config.default_simulation_length,
             activation_scale_dataloader = train_dataloader,
             max_activation_scale_iterations = config.max_activation_scale_iterations,
             scale_relu_with_max_activation = config.scale_relu_with_max_activation,
         )
-        
+
         reference_ann_model, device = ported_ann_model, None
-    
+
         return snn_model, ported_ann_model, model, device
-    else:
-        return model
+    return model

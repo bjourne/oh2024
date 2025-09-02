@@ -1,6 +1,9 @@
 from snn_signgd.functional_config import FunctionalConfig, Munch
-from snn_signgd import SGDModule, ExponentialScheduler, construct_spiking_neurons_for_operators, setup #, ConstantScheduler, InverseScheduler
-    
+from snn_signgd import (
+    SGDModule, ExponentialScheduler,
+    construct_spiking_neurons_for_operators, setup
+)
+
 neuronal_dynamics_per_ops = construct_spiking_neurons_for_operators(
     moduleoptimizer_cfg = FunctionalConfig(
         module = SGDModule,

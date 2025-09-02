@@ -5,11 +5,13 @@ from typing import Callable, List, Any, Optional, Tuple
 import os
 import math
 import copy
-from torch import Tensor
+
 
 from snn_signgd.pretty_printer import print
+from torch import Tensor
+from torch.nn import *
 
-class SignPreservingScaler(nn.Module):
+class SignPreservingScaler(Module):
     def __init__(self, scale: torch.Tensor, inverse:bool):
         super().__init__()
         self.inverse = inverse
@@ -21,21 +23,23 @@ class SignPreservingScaler(nn.Module):
             x /= self.scale_factor
         return x
 
-class ScaledOp(nn.Module):
+class ScaledOp(Module):
     def __init__(self, op:Callable, scale_transform:Callable, statistics:dict):
         super().__init__()
-        
+
+        print("STATS", statistics["output/max"])
+
         max = statistics[os.path.join('output','max')]
         scale = max
-            
+
         scale[scale <= 1e-5] = 1.0 # Prevent nan
-        
+
         scale = 1.0/ (torch.unsqueeze(torch.abs(scale), dim = 0))
-        
+
         self.forward_scaler = SignPreservingScaler(scale = scale, inverse = False)
         self.relu = op()
         self.backward_scaler = SignPreservingScaler(
-            scale = scale_transform(scale), 
+            scale = scale_transform(scale),
             inverse = True
         )
     def forward(self,x):
@@ -44,10 +48,10 @@ class ScaledOp(nn.Module):
         y = self.backward_scaler(y)
         return y
 
-torch.fx.wrap("ScaledOp") 
+torch.fx.wrap("ScaledOp")
 
 class BinaryTreeMaxPool2d(nn.Module):
-    def __init__(self, 
+    def __init__(self,
                  kernel_size, stride, padding, dilation
                 ):
         super().__init__()
@@ -67,40 +71,40 @@ class BinaryTreeMaxPool2d(nn.Module):
             B, C, H, W = chunk1.shape
             chunk0 = torch.maximum(chunk0[:,:,:H], chunk1)
             #height_overlap_C = torch.complex(chunk0[:,:,:H], chunk1)
-        
+
             #chunk0 = neuron(height_overlap_C).to(x) # ComplexFloat to x.dtype
 
         spikes = chunk0
-        
+
         chunk0 = spikes[:,:,:,::self.stride]
         for index in range(1, self.kernel_size):
             chunk1 = spikes[:,:,:,index ::self.stride]
             B, C, H, W = chunk1.shape
             chunk0 = torch.maximum(chunk0[:,:,:,:W], chunk1)
             #width_overlap_C = torch.complex(chunk0[:,:,:,:W], chunk1)
-        
+
             #chunk0 = neuron(width_overlap_C).to(x) # ComplexFloat to x.dtype
-            
+
         spikes = chunk0
         return spikes
 
-torch.fx.wrap("BinaryTreeMaxPool2d") 
+torch.fx.wrap("BinaryTreeMaxPool2d")
 
 def multiply_inverse_of_square_root(x:torch.Tensor,y:torch.Tensor) -> torch.Tensor:
     return torch.divide(x, torch.sqrt(y))
-    
-torch.fx.wrap("multiply_inverse_of_square_root") 
+
+torch.fx.wrap("multiply_inverse_of_square_root")
 # Inspired by https://pytorch.org/vision/stable/_modules/torchvision/ops/stochastic_depth.html#stochastic_depth
 
 class DecomposedLayerNorm(nn.Module):
-    def __init__(self, 
-                 normalized_shape, 
+    def __init__(self,
+                 normalized_shape,
                  eps, weight, bias,
                 ):
         super().__init__()
 
         self.normalized_shape = normalized_shape
-        
+
         self.eps = eps
 
         self.weight = weight
@@ -113,7 +117,7 @@ class DecomposedLayerNorm(nn.Module):
         for _ in range(dims):
             out = out.mean(-1, keepdim = True)
         return out
-        
+
     def forward(self, x, normalized_shape = None, weight = None, bias = None, eps = None):
         if normalized_shape is not None:
             dims = len(normalized_shape)
@@ -133,17 +137,17 @@ class DecomposedLayerNorm(nn.Module):
         unbiased_x = x - mean
 
         square = torch.square(unbiased_x)
-        
+
         variance = self.average_last_dims(square, dims)
 
-        denominator = variance 
-        
-        normalized_x = multiply_inverse_of_square_root( unbiased_x , denominator + eps ) 
+        denominator = variance
+
+        normalized_x = multiply_inverse_of_square_root( unbiased_x , denominator + eps )
 
         affine_x =  weight * normalized_x + bias
         return affine_x
-        
-torch.fx.wrap("DecomposedLayerNorm") 
+
+torch.fx.wrap("DecomposedLayerNorm")
 
 from torch.nn.parameter import Parameter
 
@@ -154,14 +158,14 @@ def copy_if_exists(param):
         return None
 
 class DecomposedMultiHeadAttention(nn.Module):
-    def __init__(self, 
-                 embed_dim, num_heads, 
+    def __init__(self,
+                 embed_dim, num_heads,
                  dropout, add_zero_attn,
-                 q_proj_weight, k_proj_weight, v_proj_weight, 
+                 q_proj_weight, k_proj_weight, v_proj_weight,
                  in_proj_weight, out_proj,
                  in_proj_bias, bias_k, bias_v,
-                 _qkv_same_embed_dim, 
-                 batch_first, 
+                 _qkv_same_embed_dim,
+                 batch_first,
                  #device, dtype
                 ):
         super().__init__()
@@ -222,8 +226,8 @@ class DecomposedMultiHeadAttention(nn.Module):
         else:
             self.bias_k = self.bias_v = None
         '''
-        
-    def forward(self,             
+
+    def forward(self,
             query: Tensor,
             key: Tensor,
             value: Tensor,
@@ -294,7 +298,7 @@ class DecomposedMultiHeadAttention(nn.Module):
             return attn_output.transpose(1, 0), attn_output_weights
         else:
             return attn_output, attn_output_weights
-        
+
     def multi_head_attention_forward(
         self,
         query: Tensor,
@@ -331,7 +335,7 @@ class DecomposedMultiHeadAttention(nn.Module):
         torch._assert(query.dim() == 3, "Only batched input is supported")
         torch._assert(value.dim() == key.dim(), "value and key must have same number of dimensions")
         is_batched = True
-        if key_padding_mask is not None:   
+        if key_padding_mask is not None:
             assert key_padding_mask.dim() == 2, \
                 ("For batched (3-D) `query`, expected `key_padding_mask` to be `None` or 2-D"
                  f" but found {key_padding_mask.dim()}-D tensor instead")
@@ -353,7 +357,7 @@ class DecomposedMultiHeadAttention(nn.Module):
         )
 
         torch._assert(
-            not (is_causal and attn_mask is None), 
+            not (is_causal and attn_mask is None),
             "Need attn_mask if specifying the is_causal hint. You may use the Transformer module method `generate_square_subsequent_mask` to create this mask."
         )
 
@@ -378,9 +382,9 @@ class DecomposedMultiHeadAttention(nn.Module):
                 # longer causal.
                 is_causal = False
 
-        torch._assert(embed_dim == embed_dim_to_check, f"was expecting embedding dimension of {embed_dim_to_check}, but got {embed_dim}") 
+        torch._assert(embed_dim == embed_dim_to_check, f"was expecting embedding dimension of {embed_dim_to_check}, but got {embed_dim}")
         head_dim = embed_dim // num_heads
-        torch._assert(head_dim * num_heads == embed_dim, f"embed_dim {embed_dim} not divisible by num_heads {num_heads}") 
+        torch._assert(head_dim * num_heads == embed_dim, f"embed_dim {embed_dim} not divisible by num_heads {num_heads}")
         if use_separate_proj_weight:
             # allow MHA to have different embedding dimensions when separate projection weights are used
             torch._assert(key.shape[:2] == value.shape[:2], f"key's sequence and batch dims {key.shape[:2]} do not match value's {value.shape[:2]}")
@@ -542,7 +546,7 @@ class DecomposedMultiHeadAttention(nn.Module):
                 # squeeze the output if input was unbatched
                 attn_output = attn_output.squeeze(1)
             return attn_output, None
-        
+
     def _scaled_dot_product_attention(self, query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None) -> torch.Tensor:
         # Efficient implementation equivalent to the following:
         L, S = query.size(-2), key.size(-2)
@@ -568,13 +572,13 @@ class DecomposedMultiHeadAttention(nn.Module):
 
         # e^{x_1 + x_2 + \cdots + x_n} = e^{\mathbb{E}[X] \cdot N}, e^{x_1} + e^{x_2} + \cdots + e^{x_n} \approx e^{\mathbb{E}[X]} \cdot N
 
-        attn_weight = torch.exp(attn_weight - math.log(attn_weight.size(-1))) 
+        attn_weight = torch.exp(attn_weight - math.log(attn_weight.size(-1)))
         attn_weight = torch.div(attn_weight * key.size(-1),torch.sum(attn_weight, dim=-1, keepdim=True))
 
         attn_weight = torch.dropout(attn_weight, dropout_p, train=True)
         output = torch.matmul(attn_weight, value) / key.size(-1)
         return output
-    
+
     def _scaled_dot_product_attention_base(self, query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None) -> torch.Tensor:
         # Efficient implementation equivalent to the following:
         L, S = query.size(-2), key.size(-2)
@@ -601,10 +605,10 @@ class DecomposedMultiHeadAttention(nn.Module):
         attn_weight = torch.div(attn_weight,torch.sum(attn_weight, dim=-1, keepdim=True))
         attn_weight = torch.dropout(attn_weight, dropout_p, train=True)
         output = torch.matmul(attn_weight, value)
-        return output 
-        
-        
-torch.fx.wrap("DecomposedMultiHeadAttention") 
+        return output
+
+
+torch.fx.wrap("DecomposedMultiHeadAttention")
 
 class SquareModule(nn.Module):
     def __init__(self):
@@ -617,15 +621,13 @@ class SquareModule(nn.Module):
         #out = torch.square(x)
         return out
         #return self.square_m(out)
-        
+
 class Square(nn.Module):
     def forward(self, x):
         return torch.square(x)
-        
+
 class Identity(nn.Module):
     def forward(self, x):
         return x
-        
-torch.fx.wrap("SquareModule") 
 
-        
+torch.fx.wrap("SquareModule")

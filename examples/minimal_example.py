@@ -61,7 +61,7 @@ if __name__ == '__main__':
     ann_model.apply(init_weights)
 
     train_dataset = cifar10_config.train_dataset(transform = transforms_train)
-    train_dataloader = DataLoader(
+    l_tr = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     )
 
     test_dataset = cifar10_config.test_dataset(transform = transforms_test)
-    test_dataloader = DataLoader(
+    l_te = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
@@ -83,19 +83,22 @@ if __name__ == '__main__':
     with torch.no_grad():
         snn_model, ann_model_ported, convert_sample = convert(
             ann_model,
-            neuronal_dynamics = config.neuronal_dynamics,
-            dynamics_type = dynamics_type,
-            default_simulation_length = 64,
-            activation_scale_dataloader = train_dataloader,
-            max_activation_scale_iterations = 10,
-            scale_relu_with_max_activation = True
+            config.neuronal_dynamics,
+            dynamics_type,
+            64,
+            l_tr,
+            10,
+            True,
+            None
         )
 
-        sample, _ = next(iter(test_dataloader))
+        sample, _ = next(iter(l_te))
         x = sample.to(DEV)
 
         ann_output = ann_model(x)
         print("ANN output:", ann_output.shape, "\n", ann_output)
+
+        print(snn_model)
 
         snn_output, outputs_timestamp = snn_model(x, timestamps)
         print("SNN output:", snn_output.shape, "\n" ,snn_output)
