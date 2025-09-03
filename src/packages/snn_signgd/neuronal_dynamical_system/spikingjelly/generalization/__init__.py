@@ -12,7 +12,9 @@ from .matmul import spike_mechanism_multiply, MatMulNeuron, ParallelogramMatMulN
 from .multihead_attention import spike_mechanism_div, spike_mechanism_exp
 from .abs import spike_mechanism_abs
 
-def construct_spiking_neurons_for_operators(moduleoptimizer_cfg, lr_scheduler_cfg):
+def construct_spiking_neurons_for_operators(
+    moduleoptimizer_cfg, lr_scheduler_cfg
+):
     output  = Munch(
         relu = FunctionalConfig(
                 module = UnaryNeuron,
@@ -116,7 +118,7 @@ def construct_spiking_neurons_for_operators(moduleoptimizer_cfg, lr_scheduler_cf
             ),
         codec = FunctionalConfig(
                 module = Codec,
-                choice = 'float', 
+                choice = 'float',
                 submodules = Munch(
                     optimizer_enc = moduleoptimizer_cfg,
                     optimizer_dec = moduleoptimizer_cfg,

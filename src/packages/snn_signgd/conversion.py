@@ -6,19 +6,11 @@ from .port_ann import porting
 
 from snn_signgd.pretty_printer import print
 
-#def convert(config, ann_model, sample_size = None):
-'''
-    train_dataset = dataset(transform = data_preprocessor)
-    train_dataloader = DataLoader(
-        train_dataset, batch_size=batch_size,
-        shuffle=True, drop_last=False, num_workers=4, pin_memory=True
-    )
-'''
 def convert(
         ann_model,
         neuronal_dynamics,
         dynamics_type:str,
-        default_simulation_length:int,
+        n_time_steps:int,
         activation_scale_dataloader:DataLoader,
         max_activation_scale_iterations:int,
         scale_relu_with_max_activation:bool,
@@ -48,7 +40,7 @@ def convert(
     snn_model = SpikingNeuralNetwork(
         ann_model = snn_compatible_ann_model,
         config = neuronal_dynamics,
-        default_simulation_length = default_simulation_length,
+        default_simulation_length = n_time_steps,
         sample_data = sample,
         dynamics_type = dynamics_type
     )

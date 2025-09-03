@@ -2,13 +2,13 @@ import torch
 from ..template import BaseNeuronWrapper
 from .membrane_equations.binary import Neuron
 from .membrane_equations.binary import TensorPair
-from ..dtype import TensorPair 
-        
+from ..dtype import TensorPair
+
 class MatMulNeuron(BaseNeuronWrapper):
     def __init__(self, **neuronal_dynamics_kwargs):
         super().__init__()
         self.neuron = Neuron(**neuronal_dynamics_kwargs)
-    def forward(self, x,y):
+    def forward(self, x, y):
         # Naive implementation
         num_right_tokens = y.shape[-1]
 
@@ -21,7 +21,7 @@ class MatMulNeuron(BaseNeuronWrapper):
         x, y = x.expand(*size), torch.unsqueeze(y, dim = -3)
 
         pair = TensorPair(x, y)
-        
+
         output = self.neuron(pair).to(x)
         output = torch.sum(output, dim = -2)
         '''
@@ -38,7 +38,7 @@ class MatMulNeuron(BaseNeuronWrapper):
         x, y = x.expand(*size), torch.unsqueeze(torch.transpose(y,dim0=-1,dim1=-2), dim = -2)
 
         pair = TensorPair(x, y)
-        
+
         output = self.neuron(pair).to(x)
         output = torch.sum(output, dim = -1)
         '''
@@ -55,16 +55,16 @@ class MatMulNeuron(BaseNeuronWrapper):
         output = self.neuron(pair).to(x)
         '''
         return output
-    
-    
-def spike_mechanism_multiply(neuron):     
+
+
+def spike_mechanism_multiply(neuron):
     y = neuron.v
 
     x1, x2  = neuron.x.x, neuron.x.y
     y = y.to(x1)
     spike = (y >= torch.mul(x1,x2)).to(y)
     #spike = torch.heaviside(y - torch.mul(x1, x2), torch.zeros_like(neuron.x.data)) # TODO
-    
+
     return spike
 
 class ParallelogramMatMulNeuron(BaseNeuronWrapper):
@@ -98,12 +98,11 @@ class ParallelogramMatMulNeuron(BaseNeuronWrapper):
         output = 0.5 * (xplusy_sq - x_sq - y_sq)
 
         return output
-    
-    
-def spike_mechanism_square(neuron):     
+
+
+def spike_mechanism_square(neuron):
     y = neuron.v
 
     spike = torch.heaviside(y - neuron.x ** 2, neuron.x) # TODO
-    
-    return spike
 
+    return spike

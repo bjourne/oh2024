@@ -16,10 +16,15 @@ from functools import partial
 import copy
 
 from .core.layer import multiply_inverse_of_square_root
-torch.fx.wrap("multiply_inverse_of_square_root") # fx.wrap should be at the top of every module
+# fx.wrap should be at the top of every module
+torch.fx.wrap("multiply_inverse_of_square_root")
 
 class SpikingNeuralNetwork(Module):
-    def __init__(self, ann_model, config:dict, default_simulation_length:int, dynamics_type:str, sample_data:torch.Tensor):
+    def __init__(
+            self, ann_model, config:dict,
+            default_simulation_length:int,
+            dynamics_type:str, sample_data:torch.Tensor
+    ):
         super().__init__()
 
         self.simulation_length = default_simulation_length
@@ -50,7 +55,7 @@ class SpikingNeuralNetwork(Module):
             y = self.codec.decode( y, y_enc_t , timestep )
 
             if timestep in timestamps:
-                history.append( y.clone().detach() )
+                history.append(y.clone().detach())
 
         if timestamps:
             return y, history

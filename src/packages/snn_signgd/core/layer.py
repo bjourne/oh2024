@@ -24,7 +24,10 @@ class SignPreservingScaler(Module):
         return x
 
 class ScaledOp(Module):
-    def __init__(self, op:Callable, scale_transform:Callable, statistics:dict):
+    def __init__(
+            self, op:Callable,
+            scale_transform:Callable, statistics:dict
+    ):
         super().__init__()
 
         print("STATS", statistics["output/max"])
@@ -50,7 +53,7 @@ class ScaledOp(Module):
 
 torch.fx.wrap("ScaledOp")
 
-class BinaryTreeMaxPool2d(nn.Module):
+class BinaryTreeMaxPool2d(Module):
     def __init__(self,
                  kernel_size, stride, padding, dilation
                 ):
@@ -96,11 +99,12 @@ def multiply_inverse_of_square_root(x:torch.Tensor,y:torch.Tensor) -> torch.Tens
 torch.fx.wrap("multiply_inverse_of_square_root")
 # Inspired by https://pytorch.org/vision/stable/_modules/torchvision/ops/stochastic_depth.html#stochastic_depth
 
-class DecomposedLayerNorm(nn.Module):
-    def __init__(self,
-                 normalized_shape,
-                 eps, weight, bias,
-                ):
+class DecomposedLayerNorm(Module):
+    def __init__(
+            self,
+            normalized_shape,
+            eps, weight, bias,
+    ):
         super().__init__()
 
         self.normalized_shape = normalized_shape
@@ -157,7 +161,7 @@ def copy_if_exists(param):
     else:
         return None
 
-class DecomposedMultiHeadAttention(nn.Module):
+class DecomposedMultiHeadAttention(Module):
     def __init__(self,
                  embed_dim, num_heads,
                  dropout, add_zero_attn,
@@ -609,25 +613,3 @@ class DecomposedMultiHeadAttention(nn.Module):
 
 
 torch.fx.wrap("DecomposedMultiHeadAttention")
-
-class SquareModule(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.mean = nn.Identity()
-        #self.square_m = nn.Threshold(-9999, 0)
-    def forward(self, x):
-        out = torch.square(self.mean(x))
-        #out = torch.square(x)
-        #out = torch.square(x)
-        return out
-        #return self.square_m(out)
-
-class Square(nn.Module):
-    def forward(self, x):
-        return torch.square(x)
-
-class Identity(nn.Module):
-    def forward(self, x):
-        return x
-
-torch.fx.wrap("SquareModule")

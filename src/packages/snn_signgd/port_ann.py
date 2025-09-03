@@ -18,7 +18,8 @@ from .core.layer import (
 )
 from torch.nn import *
 
-torch.fx.wrap("multiply_inverse_of_square_root") # fx.wrap should be at the top of every module
+# fx.wrap should be at the top of every module
+torch.fx.wrap("multiply_inverse_of_square_root")
 
 from .core.hook import hook_context, activation_stats_hook
 from functools import partial

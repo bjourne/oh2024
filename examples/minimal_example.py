@@ -45,24 +45,24 @@ if __name__ == '__main__':
         case _:
             raise ValueError(f"Unknown dynamics type: {dynamics_type}, must be 'signgd' or 'subgradient'")
 
-    ann_model = load_model(
+    ann = load_model(
         category_name = 'resnet',
         vgg_default = 'VGG16',
         index = 0
     ).to(DEV)
 
-    ann_model.eval()
+    ann.eval()
 
     def init_weights(m):
         if type(m) == Linear or type(m) == Conv2d:
             torch.nn.init.xavier_normal_(m.weight,gain=1.0)
             torch.nn.init.normal_(m.bias,mean=1.0,std=1)
 
-    ann_model.apply(init_weights)
+    ann.apply(init_weights)
 
-    train_dataset = cifar10_config.train_dataset(transform = transforms_train)
+    d_tr = cifar10_config.train_dataset(transform = transforms_train)
     l_tr = DataLoader(
-        train_dataset,
+        d_tr,
         batch_size=batch_size,
         shuffle=True,
         drop_last=False,
@@ -70,9 +70,9 @@ if __name__ == '__main__':
         pin_memory=True
     )
 
-    test_dataset = cifar10_config.test_dataset(transform = transforms_test)
+    d_te = cifar10_config.test_dataset(transform = transforms_test)
     l_te = DataLoader(
-        test_dataset,
+        d_te,
         batch_size=batch_size,
         shuffle=False,
         drop_last=False,
@@ -81,8 +81,8 @@ if __name__ == '__main__':
     )
 
     with torch.no_grad():
-        snn_model, ann_model_ported, convert_sample = convert(
-            ann_model,
+        snn, ann_model_ported, convert_sample = convert(
+            ann,
             config.neuronal_dynamics,
             dynamics_type,
             64,
@@ -95,10 +95,10 @@ if __name__ == '__main__':
         sample, _ = next(iter(l_te))
         x = sample.to(DEV)
 
-        ann_output = ann_model(x)
+        ann_output = ann(x)
         print("ANN output:", ann_output.shape, "\n", ann_output)
 
-        print(snn_model)
+        print(snn)
 
-        snn_output, outputs_timestamp = snn_model(x, timestamps)
+        snn_output, outputs_timestamp = snn(x, timestamps)
         print("SNN output:", snn_output.shape, "\n" ,snn_output)
