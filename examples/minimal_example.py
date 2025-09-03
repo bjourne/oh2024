@@ -98,7 +98,5 @@ if __name__ == '__main__':
         ann_output = ann(x)
         print("ANN output:", ann_output.shape, "\n", ann_output)
 
-        print(snn)
-
         snn_output, outputs_timestamp = snn(x, timestamps)
         print("SNN output:", snn_output.shape, "\n" ,snn_output)

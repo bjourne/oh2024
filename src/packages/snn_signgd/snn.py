@@ -29,9 +29,14 @@ class SpikingNeuralNetwork(Module):
 
         self.simulation_length = default_simulation_length
 
-        self.model, self.log_transform = nonlinearity_to_spiking_neuron[dynamics_type](ann_model = ann_model, config = config)
+        self.model, self.log_transform = \
+            nonlinearity_to_spiking_neuron[dynamics_type](
+                ann_model = ann_model, config = config
+            )
 
-        corrections = config.correction(net = self.model, sample_data = sample_data)
+        corrections = config.correction(
+            net = self.model, sample_data = sample_data
+        )
 
         self.codec = config.codec(statistics = corrections)
 

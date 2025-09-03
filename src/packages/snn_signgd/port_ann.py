@@ -7,22 +7,64 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from .graph_functional import pattern_matching_transform
-from .graph_functional.transforms import replace_op, fuse_conv_bn, replace_ops_cases
+from .graph_functional.utils import replace_node_module
+from .graph_functional.transforms import replace_op, replace_ops_cases
 
 from .core.layer import (
-    ScaledOp,
     BinaryTreeMaxPool2d,
     DecomposedLayerNorm,
     DecomposedMultiHeadAttention,
     multiply_inverse_of_square_root
 )
 from torch.nn import *
+from torch.nn.utils.fusion import fuse_conv_bn_eval
 
 # fx.wrap should be at the top of every module
 torch.fx.wrap("multiply_inverse_of_square_root")
 
 from .core.hook import hook_context, activation_stats_hook
 from functools import partial
+
+class SignPreservingScaler(Module):
+    def __init__(self, scale, inverse):
+        super().__init__()
+        self.inverse = inverse
+        self.scale_factor = scale
+
+    def forward(self,x):
+        if not self.inverse:
+            x *= self.scale_factor
+        else:
+            x /= self.scale_factor
+        return x
+
+class ScaledOp(Module):
+    def __init__(self, scale_transform, statistics):
+        super().__init__()
+
+        print("STATS", statistics["output/max"].shape)
+
+        self.scale = statistics["output/max"]
+
+        self.scale[self.scale <= 1e-5] = 1.0 # Prevent nan
+
+        self.scale = 1.0 / torch.unsqueeze(torch.abs(self.scale), dim = 0)
+
+        self.forward_scaler = SignPreservingScaler(
+            scale = self.scale, inverse = False)
+        self.relu = Hardtanh()
+        self.backward_scaler = SignPreservingScaler(
+            scale = scale_transform(self.scale),
+            inverse = True
+        )
+    def forward(self,x):
+        print("Scaled op, forward")
+        y = self.forward_scaler(x)
+        y = self.relu(y)
+        y = self.backward_scaler(y)
+        return y
+
+#torch.fx.wrap("ScaledOp")
 
 unary_module_placeholder = Hardtanh
 
@@ -34,7 +76,6 @@ def scale_relu(net):
         graph_transform = replace_op(
             partial(
                 ScaledOp,
-                op = unary_module_placeholder,
                 scale_transform = lambda x : x
             ),
             inherit_args = {'statistics':"activation_stats"}
@@ -66,8 +107,8 @@ def porting(net, loader, n_iter, relu_scaling):
 
     net = _fuse_conv_bn(net)
     net = _decompose_maxpool(net)
-    net = _decompose_layer_norm(net)
-    net = _modularize_relu(net)
+    net = decompose_layer_norm(net)
+    net = modularize_relu(net)
     net = _decompose_multihead_attention(net)
 
     if relu_scaling is not None:
@@ -75,10 +116,34 @@ def porting(net, loader, n_iter, relu_scaling):
         net = scale_relu(net)
     return net
 
-def _fuse_conv_bn(model):
+def fuse_conv_bn():
+    def fuse_conv_bn_node_transform(
+            node, trail, pattern, graph, modules
+    ):
+        assert len(pattern) >= 2, "fuse_conv_bn must have pattern longer or equal to 2"
+        assert len(trail) >= 2, "fuse_conv_bn must have detected subgraph longer or equal to 2"
+
+        node_prev = trail[-2]
+
+        # Output of conv is used by other nodes
+        if len(node_prev.users) > 1:
+            return
+
+        conv = modules[node_prev.target]
+        bn = modules[node.target]
+        fused_conv = fuse_conv_bn_eval(conv, bn)
+
+        replace_node_module(node_prev, modules, fused_conv)
+        node.replace_all_uses_with(node_prev)
+        graph.erase_node(node)
+        return
+
+    return fuse_conv_bn_node_transform
+
+def _fuse_conv_bn(net):
     print("Fuse conv/bn")
-    model, _ = pattern_matching_transform(
-        model,
+    net, _ = pattern_matching_transform(
+        net,
         patterns = [
             (Conv1d, BatchNorm1d),
             (Conv2d, BatchNorm2d),
@@ -87,11 +152,11 @@ def _fuse_conv_bn(model):
         graph_transform = fuse_conv_bn(),
         inplace = False
     )
-    return model
+    return net
 
-def _decompose_maxpool(model):
-    model, _ = pattern_matching_transform(
-        model,
+def _decompose_maxpool(net):
+    net, _ = pattern_matching_transform(
+        net,
         patterns = [(F.max_pool2d,), (MaxPool2d,)],
         graph_transform = replace_op(
             BinaryTreeMaxPool2d,
@@ -104,30 +169,29 @@ def _decompose_maxpool(model):
         ),
         inplace = False
     )
-    return model
+    return net
 
-def _decompose_layer_norm(model):
-    model, _ = pattern_matching_transform(
-        model,
+def decompose_layer_norm(net):
+    net, _ = pattern_matching_transform(
+        net,
         patterns = [(LayerNorm,), (F.layer_norm,)],
         graph_transform = replace_op(
             DecomposedLayerNorm,
             inherit_args = {
                 'normalized_shape':'normalized_shape',
                 'eps':'eps',
-                #'elementwise_affine':'elementwise_affine',
                 'weight':'weight',
                 'bias':'bias',
             }
         ),
         inplace = False
     )
-    return model
+    return net
 
 # MHA not in article.
-def _decompose_multihead_attention(model):
-    model, _ = pattern_matching_transform(
-        model,
+def _decompose_multihead_attention(net):
+    net, _ = pattern_matching_transform(
+        net,
         patterns = [(MultiheadAttention,)],
         graph_transform = replace_op(
             DecomposedMultiHeadAttention,
@@ -150,7 +214,7 @@ def _decompose_multihead_attention(model):
         ),
         inplace = False
     )
-    return model
+    return net
 
 
 class Square(Module):
@@ -172,29 +236,29 @@ class Modular(nn.Module):
     def forward(self, *args, **kwargs):
         return self.forward_fn(*args, **kwargs)
 
-class ReLUWrapper(nn.Module):
+# Why need this?
+class ReLUWrapper(Module):
     def __init__(self):
         super(ReLUWrapper, self).__init__()
-        self.fn = nn.ReLU()
+        self.fn = ReLU()
     def forward(self, input, *args, **kwargs):
         return self.fn(input)
 
-def _modularize_relu(model):
-    model, _ = pattern_matching_transform(
-        model,
-        patterns = [(torch.relu,), (F.relu,), (nn.ReLU,)],
+def modularize_relu(net):
+    net, _ = pattern_matching_transform(
+        net,
+        patterns = [(torch.relu,), (F.relu,), (ReLU,)],
         graph_transform = replace_op(
             unary_module_placeholder
         ),
         inplace = False
     )
-    model, _ = pattern_matching_transform(
-        model,
+    net, _ = pattern_matching_transform(
+        net,
         patterns = [(unary_module_placeholder,)],
         graph_transform = replace_op(
-            #nn.ReLU
             ReLUWrapper
         ),
         inplace = False
     )
-    return model
+    return net

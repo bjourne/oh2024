@@ -1,8 +1,6 @@
 import torch
 from torch import nn
 
-#from pytorch_memlab import profile, set_target_gpu
-
 class SGDModule:
     def __init__(self, lr=1e-3, momentum=0, dampening=0,
                  weight_decay=0, nesterov=False, inplace = False):
@@ -14,7 +12,7 @@ class SGDModule:
             raise ValueError(f"Invalid weight_decay value: {weight_decay}")
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
-        
+
         self.config = dict(
             lr=lr, momentum=momentum, dampening=dampening,
             weight_decay=weight_decay, nesterov=nesterov,
@@ -40,10 +38,8 @@ class SGDModule:
             inplace = self.config['inplace'])
 
         self.state = state
-        #print('state:',self.state, 'param:', state['param'])
         return state['param']
-    
-    #@profile
+
     def sgd(self,
             param, grad, momentum_buffer,
             weight_decay: float,
@@ -56,7 +52,7 @@ class SGDModule:
         d_p = grad
         buf = momentum_buffer
 
-        
+
         if weight_decay != 0:
             if inplace:
                 d_p.add_(param, alpha=weight_decay) # Inplace operation
@@ -83,11 +79,10 @@ class SGDModule:
             param = d_p.add(param)
         else:
             #param = torch.add(param, d_p, alpha = -lr) #
-            param = param - lr * d_p 
+            param = param - lr * d_p
 
         state = {
             'param': param,
             'momentum_buffer': buf
         }
         return state
-    

@@ -11,54 +11,11 @@ from snn_signgd.pretty_printer import print
 from torch import Tensor
 from torch.nn import *
 
-class SignPreservingScaler(Module):
-    def __init__(self, scale: torch.Tensor, inverse:bool):
-        super().__init__()
-        self.inverse = inverse
-        self.scale_factor = scale
-    def forward(self,x):
-        if not self.inverse:
-            x *= self.scale_factor
-        else:
-            x /= self.scale_factor
-        return x
 
-class ScaledOp(Module):
-    def __init__(
-            self, op:Callable,
-            scale_transform:Callable, statistics:dict
-    ):
-        super().__init__()
-
-        print("STATS", statistics["output/max"])
-
-        max = statistics[os.path.join('output','max')]
-        scale = max
-
-        scale[scale <= 1e-5] = 1.0 # Prevent nan
-
-        scale = 1.0/ (torch.unsqueeze(torch.abs(scale), dim = 0))
-
-        self.forward_scaler = SignPreservingScaler(scale = scale, inverse = False)
-        self.relu = op()
-        self.backward_scaler = SignPreservingScaler(
-            scale = scale_transform(scale),
-            inverse = True
-        )
-    def forward(self,x):
-        y = self.forward_scaler(x)
-        y = self.relu(y)
-        y = self.backward_scaler(y)
-        return y
-
-torch.fx.wrap("ScaledOp")
 
 class BinaryTreeMaxPool2d(Module):
-    def __init__(self,
-                 kernel_size, stride, padding, dilation
-                ):
+    def __init__(self, kernel_size, stride, padding, dilation):
         super().__init__()
-        print("K:", kernel_size, "S:", stride, "P:", padding, "D:", dilation)
         assert dilation == 1
 
         self.kernel_size = kernel_size

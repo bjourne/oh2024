@@ -1,6 +1,9 @@
 # Experiments on SignGD-Based Neuronal Dynamics
 
-This directory contains all the necessary scripts and configurations to evaluate the performance of the **sign gradient descent (signGD)-based neuronal dynamics** and **subgradient-based neuronal dynamics** in ANN-to-SNN conversion.
+This directory contains all the necessary scripts and configurations
+to evaluate the performance of the **sign gradient descent
+(signGD)-based neuronal dynamics** and **subgradient-based neuronal
+dynamics** in ANN-to-SNN conversion.
 
 ---
 
@@ -8,7 +11,8 @@ This directory contains all the necessary scripts and configurations to evaluate
 
 ### 1. Training an ANN Model
 
-To train an ANN model that will later be converted to an SNN, use the following command:
+To train an ANN model that will later be converted to an SNN, use the
+following command:
 
 ```bash
 python -m scripts.train --config [config_path] --gpu [gpu_number]
@@ -21,7 +25,9 @@ python -m scripts.train --config [config_path] --gpu [gpu_number]
 
 ### 2. Evaluating the Trained Model (ANN-to-SNN Conversion)
 
-Once the ANN model is trained, you can convert it into an SNN and evaluate its performance on an image classification dataset using the following command:
+Once the ANN model is trained, you can convert it into an SNN and
+evaluate its performance on an image classification dataset using the
+following command:
 
 ```bash
 python -m scripts.evaluate --config [config_path] --gpu [gpu_number]
@@ -32,7 +38,9 @@ python -m scripts.evaluate --config [config_path] --gpu [gpu_number]
 
 #### Example: Evaluating SignGD-Based Neuronal Dynamics
 
-To convert the trained ANN model into an SNN using the **signGD-based neuronal dynamics** and evaluate it on an image classification dataset, use:
+To convert the trained ANN model into an SNN using the **signGD-based
+neuronal dynamics** and evaluate it on an image classification
+dataset, use:
 
 ```bash
 # ANN-to-SNN conversion and evaluation using signGD-based dynamics
@@ -41,7 +49,8 @@ python -m scripts.evaluate --config config/signgd.py --gpu 0
 
 #### Example: Evaluating Subgradient-Based Neuronal Dynamics
 
-Similarly, to evaluate a model trained using the **subgradient-based neuronal dynamics**, run:
+Similarly, to evaluate a model trained using the **subgradient-based
+neuronal dynamics**, run:
 
 ```bash
 # ANN-to-SNN conversion and evaluation using subgradient-based dynamics
@@ -51,7 +60,9 @@ python -m scripts.evaluate --config config/subgradient.py --gpu 0
 
 ## Example Workflow
 
-Here is an example workflow that demonstrates how to train a model using signGD-based neuronal dynamics and evaluate it through ANN-to-SNN conversion:
+Here is an example workflow that demonstrates how to train a model
+using signGD-based neuronal dynamics and evaluate it through
+ANN-to-SNN conversion:
 
 1. **Train the ANN model**:
 
@@ -70,7 +81,9 @@ Here is an example workflow that demonstrates how to train a model using signGD-
 - **`config/signgd.py`**: Contains configurations specific to the experiments on **signGD-based neuronal dynamics**.
 - **`config/subgradient.py`**: Contains configurations for the **subgradient-based neuronal dynamics**.
 
-These configurations include important parameters such as learning rate, batch size, optimizer settings, and network architecture details.
+These configurations include important parameters such as learning
+rate, batch size, optimizer settings, and network architecture
+details.
 
 ## Directory Overview
 
