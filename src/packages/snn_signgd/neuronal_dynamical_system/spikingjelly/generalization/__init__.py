@@ -8,7 +8,7 @@ from .leakyrelu import spike_mechanism_leakyrelu
 from .maxpool import spike_mechanism_maximum
 from .gelu import spike_mechanism_gelu
 from .layernorm import spike_mechanism_square, spike_multiply_inverse_of_square_root
-from .matmul import spike_mechanism_multiply, MatMulNeuron, ParallelogramMatMulNeuron
+from .matmul import spike_mechanism_multiply, MatMulNeuron
 from .multihead_attention import spike_mechanism_div, spike_mechanism_exp
 from .abs import spike_mechanism_abs
 
