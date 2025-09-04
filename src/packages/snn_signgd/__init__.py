@@ -1,13 +1,8 @@
 from .conversion import convert
-from .neuronal_dynamical_system.spikingjelly.generalization.sgd import SGDModule
-from .neuronal_dynamical_system.spikingjelly.generalization.schedulers import ConstantScheduler, ExponentialScheduler, InverseScheduler
-from .neuronal_dynamical_system.spikingjelly.generalization import construct_spiking_neurons_for_operators
-from .neuronal_dynamical_system.spikingjelly import subgradient
-from .functional_config import FunctionalConfig
-
 from torch.utils.data import DataLoader
 
 def setup(stage, config, model):
+    print("setup called!")
     if stage in ['test', 'predict'] and stage not in ['fit', 'validate']:
 
         train_dataset = config.train_dataset(transform = config.preprocessors.train)

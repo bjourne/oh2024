@@ -2,8 +2,10 @@ import torch
 from torch import nn
 
 class SGDModule:
-    def __init__(self, lr=1e-3, momentum=0, dampening=0,
-                 weight_decay=0, nesterov=False, inplace = False):
+    def __init__(
+            self, lr=1e-3, momentum=0, dampening=0,
+            weight_decay=0, nesterov=False, inplace = False
+    ):
         if lr < 0.0:
             raise ValueError(f"Invalid learning rate: {lr}")
         if momentum < 0.0:
@@ -16,7 +18,8 @@ class SGDModule:
         self.config = dict(
             lr=lr, momentum=momentum, dampening=dampening,
             weight_decay=weight_decay, nesterov=nesterov,
-            inplace = inplace)
+            inplace = inplace
+        )
 
     def reset(self, initializer):
         self.state = {
@@ -64,16 +67,12 @@ class SGDModule:
                 buf = torch.clone(d_p).detach()
             else:
                 buf = momentum * buf + (1-dampening) * d_p
-                #buf = torch.add(torch.mul(buf, momentum), d_p, alpha=1 - dampening)
 
             if nesterov:
                 d_p = d_p + buf * momentum
-                #d_p = torch.add(d_p, buf, alpha=momentum)
             else:
                 d_p = buf
 
-        #param = param - lr * d_p # Not an inplace operation
-        #d_p = param - lr * d_p # Not an inplace operation
         if inplace:
             d_p.multiply_(-lr)
             param = d_p.add(param)

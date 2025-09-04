@@ -38,11 +38,11 @@ def convert(
 
     print("<cyan> Converting ANN to SNN </cyan>")
     snn_model = SpikingNeuralNetwork(
-        ann_model = snn_compatible_ann_model,
-        config = neuronal_dynamics,
-        default_simulation_length = n_time_steps,
-        sample_data = sample,
-        dynamics_type = dynamics_type
+        snn_compatible_ann_model,
+        neuronal_dynamics,
+        n_time_steps,
+        dynamics_type,
+        sample
     )
 
     print("<cyan> Finished ANN to SNN Conversion Process! </cyan>")

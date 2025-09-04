@@ -4,7 +4,9 @@ from torch.utils.data import DataLoader
 from cifar10.models.models import list_models, load_model
 from cifar10.dataset import config as cifar10_config
 from cifar10.preprocess import Cutout, CIFAR10Policy
+
 from torch.nn import *
+from torch.nn.init import normal_, xavier_normal_
 from torchvision.transforms import *
 
 from snn_signgd import convert
@@ -53,11 +55,11 @@ if __name__ == '__main__':
 
     ann.eval()
 
+    # Interesting initialization
     def init_weights(m):
         if type(m) == Linear or type(m) == Conv2d:
-            torch.nn.init.xavier_normal_(m.weight,gain=1.0)
-            torch.nn.init.normal_(m.bias,mean=1.0,std=1)
-
+            xavier_normal_(m.weight, gain=1.0)
+            normal_(m.bias, mean=1.0, std=1)
     ann.apply(init_weights)
 
     d_tr = cifar10_config.train_dataset(transform = transforms_train)

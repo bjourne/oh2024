@@ -21,9 +21,9 @@ torch.fx.wrap("multiply_inverse_of_square_root")
 
 class SpikingNeuralNetwork(Module):
     def __init__(
-            self, ann_model, config:dict,
+            self, ann, config:dict,
             default_simulation_length:int,
-            dynamics_type:str, sample_data:torch.Tensor
+            dynamics_type, sample_data
     ):
         super().__init__()
 
@@ -31,7 +31,7 @@ class SpikingNeuralNetwork(Module):
 
         self.model, self.log_transform = \
             nonlinearity_to_spiking_neuron[dynamics_type](
-                ann_model = ann_model, config = config
+                ann, config
             )
 
         corrections = config.correction(
@@ -57,7 +57,7 @@ class SpikingNeuralNetwork(Module):
         for timestep in tqdm(range(1, simulation_length + 1)):
             x_enc_t = next(x_enc)
             y_enc_t = self.model(x_enc_t)
-            y = self.codec.decode( y, y_enc_t , timestep )
+            y = self.codec.decode(y, y_enc_t, timestep )
 
             if timestep in timestamps:
                 history.append(y.clone().detach())
@@ -67,9 +67,9 @@ class SpikingNeuralNetwork(Module):
         else:
             return y
 
-def _to_spiking_neuron_signgd(ann_model, config):
+def _to_spiking_neuron_signgd(ann, config):
     model, log = pattern_matching_transform(
-        ann_model,
+        ann,
         patterns = [
             (torch.relu,), (F.relu,), (nn.ReLU,),
             (nn.LeakyReLU,),
@@ -125,9 +125,9 @@ def _to_spiking_neuron_signgd(ann_model, config):
     )
     return model, log
 
-def _to_spiking_neuron_subgradient(ann_model, config):
+def _to_spiking_neuron_subgradient(ann, config):
     model, log = pattern_matching_transform(
-        ann_model,
+        ann,
         patterns = [(torch.relu,), (F.relu,), (nn.ReLU,)],
         graph_transform =  replace_op(
             lambda : config.neuron(step_mode='s', v_reset= None)
