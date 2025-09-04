@@ -1,11 +1,14 @@
-import pytorch_lightning as pl
-import argparse, os, glob
+from pytorch_lightning import Trainer
 from snn_signgd.functional_config import import_config_from_path
 from src.reproducibility import seed_all
+
+
+import pytorch_lightning as pl
+import argparse, os, glob
 import torch
 
 def test(config, ckpt_path, devices, **kwargs):
-    trainer = pl.Trainer(
+    trainer = Trainer(
         precision=16,
         accelerator="gpu",
         devices = devices,

@@ -11,16 +11,15 @@ def setup(stage, config, model):
             shuffle=True, drop_last=False, num_workers=4, pin_memory=True
         )
         snn_model, ported_ann_model, sample = convert(
-            ann_model = model,
-            neuronal_dynamics = config.neuronal_dynamics,
-            dynamics_type = config.dynamics_type,
-            default_simulation_length = config.default_simulation_length,
-            activation_scale_dataloader = train_dataloader,
-            max_activation_scale_iterations = config.max_activation_scale_iterations,
-            scale_relu_with_max_activation = config.scale_relu_with_max_activation,
+            model,
+            config.neuronal_dynamics,
+            config.dynamics_type,
+            config.default_simulation_length,
+            train_dataloader,
+            config.max_activation_scale_iterations,
+            config.scale_relu_with_max_activation,
+            None
         )
-
         reference_ann_model, device = ported_ann_model, None
-
         return snn_model, ported_ann_model, model, device
     return model

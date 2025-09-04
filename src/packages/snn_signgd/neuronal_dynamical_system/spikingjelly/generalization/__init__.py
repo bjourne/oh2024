@@ -3,9 +3,7 @@ from functools import partial
 from snn_signgd.functional_config import FunctionalConfig, Munch
 
 from .membrane_equations import UnaryNeuron, Codec, correction, BinaryNeuron
-from .leakyrelu import spike_mechanism_leakyrelu
 from .maxpool import spike_mechanism_maximum
-from .gelu import spike_mechanism_gelu
 
 import torch
 
@@ -33,6 +31,25 @@ class MatMulNeuron(Module):
         output = torch.sum(output, dim = -2)
         return output
 
+def spike_mechanism_gelu(neuron):
+    y = neuron.v
+
+    y = y.to(neuron.x)
+    spike = torch.heaviside(
+        y - neuron.x * torch.sigmoid(1.702 * neuron.x),
+        torch.zeros_like(y)
+    )
+    return spike
+
+def spike_mechanism_leakyrelu(neuron, negative_slope:float):
+    y = neuron.v
+
+    condition = neuron.x >= 0
+    trueval = torch.heaviside( y - neuron.x , torch.tensor([0.0]))
+    falseval = torch.heaviside( y - negative_slope * neuron.x, torch.tensor([0.0]))
+    spike = condition * trueval + torch.logical_not(condition) * falseval
+
+    return spike
 
 def spike_mechanism_square(neuron):
     y = neuron.v
@@ -81,6 +98,7 @@ def spike_mechanism_relu(neuron):
     falseval = y >= 0
 
     # (neuron.x >= 0 && y >= neuron.x) || (!(neuron.x >= 0) && y >= 0)
+    # Like Corollary 5.4 I think
     spike = torch.logical_or(
         torch.logical_and(condition, trueval),
         torch.logical_and(torch.logical_not(condition), falseval)

@@ -17,14 +17,15 @@ def sign(spike):
     return 2 *spike - 1
 
 class Neuron(BaseNeuron):
-    def __init__(self,
-                 optimizer_input:Callable,
-                 optimizer_output:Callable,
-                 lr_scheduler_input:Callable,
-                 lr_scheduler_output:Callable,
-                 spike_mechanism:Callable,
-                 **kwargs
-                ):
+    def __init__(
+            self,
+            optimizer_input:Callable,
+            optimizer_output:Callable,
+            lr_scheduler_input:Callable,
+            lr_scheduler_output:Callable,
+            spike_mechanism:Callable,
+            **kwargs
+    ):
         neuron.BaseNode.__init__(self, **kwargs)
         Psychoactive.__init__(self)
         self.optimizer_input = optimizer_input
@@ -53,8 +54,7 @@ class Neuron(BaseNeuron):
         self.lr_scheduler_input.schedule()
 
     def neuronal_fire(self): # Compute gradient
-        spikes = self.spike_mechanism(self)
-        return spikes
+        return self.spike_mechanism(self)
 
     def neuronal_reset(self, spike):
         gradient = sign(spike)

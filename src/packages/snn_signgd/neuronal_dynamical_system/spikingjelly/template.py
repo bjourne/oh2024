@@ -10,7 +10,7 @@ class BaseNeuron(neuron.BaseNode, Psychoactive):
     def reset(self):
         raise NotImplementedError()
 
-    def neuronal_charge(self, x: torch.Tensor):
+    def neuronal_charge(self, x):
         raise NotImplementedError()
 
     def neuronal_fire(self):
@@ -26,10 +26,10 @@ class BaseCodec(nn.Module):
     def encodings(self) -> dict:
         raise NotImplementedError()
 
-    def encode(self, x:torch.Tensor) -> torch.Tensor:
+    def encode(self, x):
         encodings = self.encodings()
         assert self.choice in encodings.keys(), list(encodings.keys())
         return encodings[self.choice](x)
 
-    def decode(self, state:torch.Tensor, spikes:torch.Tensor, timestep:int) -> torch.Tensor:
+    def decode(self, state, spikes, timestep:int):
         raise NotImplementedError()

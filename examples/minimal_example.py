@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 from cifar10.models.models import list_models, load_model
 from cifar10.dataset import config as cifar10_config
@@ -93,6 +92,7 @@ if __name__ == '__main__':
             True,
             None
         )
+        print(snn)
 
         sample, _ = next(iter(l_te))
         x = sample.to(DEV)

@@ -1,5 +1,5 @@
-from .unary import Neuron as UnaryNeuron
 from .binary import NeuronWrapper as BinaryNeuron
+from .unary import Neuron as UnaryNeuron
 from .unary import Codec
 
 import torch

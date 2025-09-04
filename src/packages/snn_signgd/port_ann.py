@@ -25,18 +25,18 @@ torch.fx.wrap("multiply_inverse_of_square_root")
 from .core.hook import hook_context, activation_stats_hook
 from functools import partial
 
-class SignPreservingScaler(Module):
-    def __init__(self, scale, inverse):
-        super().__init__()
-        self.inverse = inverse
-        self.scale_factor = scale
+# class SignPreservingScaler(Module):
+#     def __init__(self, scale, inverse):
+#         super().__init__()
+#         self.inverse = inverse
+#         self.scale_factor = scale
 
-    def forward(self,x):
-        if not self.inverse:
-            x *= self.scale_factor
-        else:
-            x /= self.scale_factor
-        return x
+#     def forward(self,x):
+#         if not self.inverse:
+#             x *= self.scale_factor
+#         else:
+#             x /= self.scale_factor
+#         return x
 
 class ScaledOp(Module):
     def __init__(self, scale_transform, statistics):
@@ -50,18 +50,24 @@ class ScaledOp(Module):
 
         self.scale = 1.0 / torch.unsqueeze(torch.abs(self.scale), dim = 0)
 
-        self.forward_scaler = SignPreservingScaler(
-            scale = self.scale, inverse = False)
+        # self.forward_scaler = SignPreservingScaler(
+        #     scale = self.scale, inverse = False)
         self.relu = Hardtanh()
-        self.backward_scaler = SignPreservingScaler(
-            scale = scale_transform(self.scale),
-            inverse = True
-        )
+        # self.backward_scaler = SignPreservingScaler(
+        #     scale = scale_transform(self.scale),
+        #     inverse = True
+        # )
     def forward(self,x):
         print("Scaled op, forward")
-        y = self.forward_scaler(x)
+
+        y = x * self.scale
         y = self.relu(y)
-        y = self.backward_scaler(y)
+        y = y  / self.scale
+
+
+        # y = self.forward_scaler(x)
+        # y = self.relu(y)
+        # y = self.backward_scaler(y)
         return y
 
 #torch.fx.wrap("ScaledOp")
@@ -116,29 +122,50 @@ def porting(net, loader, n_iter, relu_scaling):
         net = scale_relu(net)
     return net
 
-def fuse_conv_bn():
-    def fuse_conv_bn_node_transform(
-            node, trail, pattern, graph, modules
-    ):
-        assert len(pattern) >= 2, "fuse_conv_bn must have pattern longer or equal to 2"
-        assert len(trail) >= 2, "fuse_conv_bn must have detected subgraph longer or equal to 2"
+def fuse_conv_bn_node_transform(node, trail, pattern, graph, modules):
+    assert len(pattern) >= 2
+    assert len(trail) >= 2
 
-        node_prev = trail[-2]
+    node_prev = trail[-2]
 
-        # Output of conv is used by other nodes
-        if len(node_prev.users) > 1:
-            return
-
-        conv = modules[node_prev.target]
-        bn = modules[node.target]
-        fused_conv = fuse_conv_bn_eval(conv, bn)
-
-        replace_node_module(node_prev, modules, fused_conv)
-        node.replace_all_uses_with(node_prev)
-        graph.erase_node(node)
+    # Output of conv is used by other nodes
+    if len(node_prev.users) > 1:
         return
 
-    return fuse_conv_bn_node_transform
+    conv = modules[node_prev.target]
+    bn = modules[node.target]
+    fused_conv = fuse_conv_bn_eval(conv, bn)
+
+    replace_node_module(node_prev, modules, fused_conv)
+    node.replace_all_uses_with(node_prev)
+    graph.erase_node(node)
+    return
+
+
+
+# def fuse_conv_bn():
+#     def fuse_conv_bn_node_transform(
+#             node, trail, pattern, graph, modules
+#     ):
+#         assert len(pattern) >= 2
+#         assert len(trail) >= 2
+
+#         node_prev = trail[-2]
+
+#         # Output of conv is used by other nodes
+#         if len(node_prev.users) > 1:
+#             return
+
+#         conv = modules[node_prev.target]
+#         bn = modules[node.target]
+#         fused_conv = fuse_conv_bn_eval(conv, bn)
+
+#         replace_node_module(node_prev, modules, fused_conv)
+#         node.replace_all_uses_with(node_prev)
+#         graph.erase_node(node)
+#         return
+
+#     return fuse_conv_bn_node_transform
 
 def _fuse_conv_bn(net):
     print("Fuse conv/bn")
@@ -149,7 +176,7 @@ def _fuse_conv_bn(net):
             (Conv2d, BatchNorm2d),
             (Conv3d, BatchNorm3d)
         ],
-        graph_transform = fuse_conv_bn(),
+        graph_transform = fuse_conv_bn_node_transform,
         inplace = False
     )
     return net
