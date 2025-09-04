@@ -1,12 +1,13 @@
 import torch
-from typing import Callable, List
+
 from spikingjelly.activation_based import neuron
 from ...psychoactive_substance import Psychoactive
-from ...template import BaseNeuron, BaseCodec, BaseNeuronWrapper
+from ...template import BaseNeuron, BaseCodec
 from .unary import Neuron
 from ...dtype import TensorPair
 from itertools import count
 from munch import Munch
+from torch.nn import Module
 
 def relocate(src, dst):
     if torch.is_tensor(src):
@@ -16,7 +17,7 @@ def relocate(src, dst):
 def sign(spike):
     return 2 * spike - 1
 
-class NeuronWrapper(BaseNeuronWrapper):
+class NeuronWrapper(Module):
     def __init__(self, **neuronal_dynamics_kwargs):
         super().__init__()
         #print("Kwargs:", neuronal_dynamics_kwargs)

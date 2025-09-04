@@ -1,14 +1,43 @@
 from functools import partial
 
 from snn_signgd.functional_config import FunctionalConfig, Munch
+
 from .membrane_equations import UnaryNeuron, Codec, correction, BinaryNeuron
 from .leakyrelu import spike_mechanism_leakyrelu
 from .maxpool import spike_mechanism_maximum
 from .gelu import spike_mechanism_gelu
-from .layernorm import spike_mechanism_square, spike_multiply_inverse_of_square_root
-from .matmul import spike_mechanism_multiply, MatMulNeuron
 
 import torch
+
+from torch.nn import Module
+
+class MatMulNeuron(Module):
+    def __init__(self, **neuronal_dynamics_kwargs):
+        super().__init__()
+        self.neuron = Neuron(**neuronal_dynamics_kwargs)
+    def forward(self, x, y):
+        # Naive implementation
+        num_right_tokens = y.shape[-1]
+
+        repeat_count = num_right_tokens
+
+        x = torch.unsqueeze(x, dim = -1)
+        size = list(x.shape)
+        size[-1] = repeat_count
+
+        x, y = x.expand(*size), torch.unsqueeze(y, dim = -3)
+
+        pair = TensorPair(x, y)
+
+        output = self.neuron(pair).to(x)
+        output = torch.sum(output, dim = -2)
+        return output
+
+
+def spike_mechanism_square(neuron):
+    y = neuron.v
+    spike = torch.heaviside(y - neuron.x ** 2, neuron.x) # TODO
+    return spike
 
 def spike_mechanism_exp(neuron):
     y = neuron.v
@@ -35,6 +64,15 @@ def spike_mechanism_abs(neuron):
     )
     return spike
 
+def spike_mechanism_multiply(neuron):
+    y = neuron.v
+
+    x1, x2  = neuron.x.x, neuron.x.y
+    y = y.to(x1)
+    spike = (y >= torch.mul(x1,x2)).to(y)
+
+    return spike
+
 def spike_mechanism_relu(neuron):
     y = neuron.v
 
@@ -47,6 +85,21 @@ def spike_mechanism_relu(neuron):
         torch.logical_and(condition, trueval),
         torch.logical_and(torch.logical_not(condition), falseval)
     ).to(neuron.x)
+
+    return spike
+
+def spike_mechanism_square(neuron):
+    y = neuron.v
+    spike = (y >= neuron.x ** 2).to(y)
+    return spike
+
+
+def spike_multiply_inverse_of_square_root(neuron):
+    y = neuron.v
+    x1, x2  = neuron.x.x, neuron.x.y
+
+    y = y.to(x1)
+    spike = torch.heaviside( torch.sqrt(x2) * y - x1 , torch.zeros_like(x1))
 
     return spike
 

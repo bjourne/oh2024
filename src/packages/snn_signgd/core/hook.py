@@ -14,7 +14,7 @@ from spikingjelly.activation_based import neuron
 
 import snn_signgd.dictfs as dictfs
 
-from ..neuronal_dynamical_system.spikingjelly.template import BaseNeuron, BaseCodec, BaseNeuronWrapper
+from ..neuronal_dynamical_system.spikingjelly.template import BaseNeuron, BaseCodec
 from ..neuronal_dynamical_system.spikingjelly.psychoactive_substance import stimulant, depressant, Psychoactive
 from ..neuronal_dynamical_system.spikingjelly.dtype import TensorPair
 
