@@ -6,12 +6,9 @@ import os
 import math
 import copy
 
-
 from snn_signgd.pretty_printer import print
 from torch import Tensor
 from torch.nn import *
-
-
 
 class BinaryTreeMaxPool2d(Module):
     def __init__(self, kernel_size, stride, padding, dilation):
@@ -30,9 +27,6 @@ class BinaryTreeMaxPool2d(Module):
             chunk1 = x[:,:,index ::self.stride]
             B, C, H, W = chunk1.shape
             chunk0 = torch.maximum(chunk0[:,:,:H], chunk1)
-            #height_overlap_C = torch.complex(chunk0[:,:,:H], chunk1)
-
-            #chunk0 = neuron(height_overlap_C).to(x) # ComplexFloat to x.dtype
 
         spikes = chunk0
 

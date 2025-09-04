@@ -5,7 +5,6 @@ from snn_signgd.core.layer import multiply_inverse_of_square_root
 from snn_signgd.graph_functional import pattern_matching_transform
 from snn_signgd.graph_functional.transforms import replace_op, replace_ops_cases
 from snn_signgd.port_ann import porting
-#from spikingjelly.activation_based import functional
 from spikingjelly.activation_based.functional import reset_net
 
 from torch.nn import *
@@ -24,7 +23,7 @@ def _to_spiking_neuron_signgd(ann, config):
             (multiply_inverse_of_square_root,),
             (torch.square,),
             (torch.exp,),
-            (torch.matmul,),
+            #(torch.matmul,),
             (torch.div,),
             (torch.abs,),
         ],
@@ -37,7 +36,7 @@ def _to_spiking_neuron_signgd(ann, config):
                 lambda : config.mul_inverse_sqrt(step_mode='s', v_reset= None),
                 lambda : config.square(step_mode='s', v_reset= None),
                 lambda : config.exp(step_mode='s', v_reset= None),
-                lambda : config.matmul(step_mode='s', v_reset= None),
+                #lambda : config.matmul(step_mode='s', v_reset= None),
                 lambda : config.div(step_mode='s', v_reset= None),
                 lambda : config.abs(step_mode='s', v_reset= None),
             ),
@@ -49,7 +48,7 @@ def _to_spiking_neuron_signgd(ann, config):
                 [(multiply_inverse_of_square_root,)],
                 [(torch.square,)],
                 [(torch.exp,)],
-                [(torch.matmul,)],
+                #[(torch.matmul,)],
                 [(torch.div,)],
                 [(torch.abs,)],
             ),
@@ -61,7 +60,7 @@ def _to_spiking_neuron_signgd(ann, config):
                 None,
                 None,
                 None,
-                None,
+                #None,
                 None,
                 None,
             ),
@@ -75,7 +74,7 @@ def _to_spiking_neuron_subgradient(ann, config):
     model, log = pattern_matching_transform(
         ann,
         patterns = [(torch.relu,), (F.relu,), (nn.ReLU,)],
-        graph_transform =  replace_op(
+        graph_transform = replace_op(
             lambda : config.neuron(step_mode='s', v_reset= None)
         ),
         inplace = False
