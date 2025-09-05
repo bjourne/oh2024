@@ -25,7 +25,7 @@ def _to_spiking_neuron_signgd(ann, config):
             (torch.exp,),
             #(torch.matmul,),
             (torch.div,),
-            (torch.abs,),
+            #(torch.abs,),
         ],
         graph_transform = replace_ops_cases(
             dest_modules = (
@@ -38,7 +38,7 @@ def _to_spiking_neuron_signgd(ann, config):
                 lambda : config.exp(step_mode='s', v_reset= None),
                 #lambda : config.matmul(step_mode='s', v_reset= None),
                 lambda : config.div(step_mode='s', v_reset= None),
-                lambda : config.abs(step_mode='s', v_reset= None),
+                #lambda : config.abs(step_mode='s', v_reset= None),
             ),
             cases = (
                 [(torch.relu,), (F.relu,), (ReLU,)],
@@ -50,7 +50,7 @@ def _to_spiking_neuron_signgd(ann, config):
                 [(torch.exp,)],
                 #[(torch.matmul,)],
                 [(torch.div,)],
-                [(torch.abs,)],
+                #[(torch.abs,)],
             ),
             inherit_kwargs = (
                 None,
@@ -62,7 +62,7 @@ def _to_spiking_neuron_signgd(ann, config):
                 None,
                 #None,
                 None,
-                None,
+                #None,
             ),
         ),
         inplace = False,

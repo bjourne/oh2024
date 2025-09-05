@@ -16,18 +16,24 @@ def correction(net, sample_data):
         depressed_output = net(D.depress(sample_data[0:1]))
 
     for m in tqdm(net.modules(), desc = "Dynamics Correction", total = len(list(net.modules()))):
-        if hasattr(m, 'activations'):
-            offset = m.activations["excited"] - m.activations["depressed"] \
-                + 2 * m.activations["depressed"]
-            bias = m.activations["depressed"]
+        if not hasattr(m, "activations"):
+            continue
+        exc = m.activations["excited"]
+        dep = m.activations["depressed"]
+        offset = exc + dep
+        bias = dep
 
-            offset = reduce_duplicates(offset[0])
-            bias = reduce_duplicates(bias[0])
+        # offset = m.activations["excited"] - m.activations["depressed"] \
+        #     + 2 * m.activations["depressed"]
+        # bias = m.activations["depressed"]
 
-            del(m.activations)
-            del(m.v)
-            m.offset = offset
-            m.bias = bias
+        offset = reduce_duplicates(offset[0])
+        bias = reduce_duplicates(bias[0])
+
+        del(m.activations)
+        del(m.v)
+        m.offset = offset
+        m.bias = bias
 
     statistics = Munch(excited = excited_output.clone(), depressed = depressed_output.clone())
     offset = statistics["excited"] - statistics["depressed"] + 2 * statistics["depressed"]

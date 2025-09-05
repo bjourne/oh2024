@@ -1,7 +1,6 @@
 import torch
 
 from spikingjelly.activation_based import neuron
-from ...psychoactive_substance import Psychoactive
 from ...template import BaseNeuron, BaseCodec
 from .unary import Neuron
 from ...dtype import TensorPair

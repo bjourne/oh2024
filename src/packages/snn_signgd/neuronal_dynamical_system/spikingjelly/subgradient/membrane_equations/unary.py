@@ -1,7 +1,7 @@
 import math
 import torch
 from torch import nn
-from typing import Callable, List
+from typing import List
 from spikingjelly.activation_based import neuron
 from ...psychoactive_substance import stimulant, depressant, Psychoactive
 from ...template import BaseNeuron, BaseCodec
@@ -15,16 +15,16 @@ def relocate(src, dst):
         src = src.to(dst.device)
     return src
 
-
 class Neuron(BaseNeuron):
-    def __init__(self,
-                 initial_learning_rate:float, learning_rate_scheduler:Callable,
-                 momentum: float, nesterov_momentum : bool,
-                 subgradient_function:Callable,
-                 weight_decay:float,
-                 function_value_initialization:float = 0.0,
-                 **kwargs
-                ):
+    def __init__(
+        self,
+        initial_learning_rate:float, learning_rate_scheduler,
+        momentum: float, nesterov_momentum : bool,
+        subgradient_function,
+        weight_decay:float,
+        function_value_initialization:float = 0.0,
+        **kwargs
+    ):
         neuron.BaseNode.__init__(self, **kwargs)
         Psychoactive.__init__(self)
         self.lr_init = initial_learning_rate
@@ -97,8 +97,8 @@ class Codec(BaseCodec):
     def __init__(
             self,
             choice:str,
-            initial_learning_rate:float, learning_rate_scheduler:Callable,
-            subgradient_function:Callable,
+            initial_learning_rate:float, learning_rate_scheduler,
+            subgradient_function,
             momentum: float, nesterov_momentum : bool,
             weight_decay:float,
             function_value_initialization:float = 0.0,

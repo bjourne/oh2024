@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+from torch.nn import *
 from spikingjelly.activation_based import neuron
 from .psychoactive_substance import Psychoactive
 
@@ -19,7 +19,7 @@ class BaseNeuron(neuron.BaseNode, Psychoactive):
     def neuronal_reset(self, spike):
         raise NotImplementedError()
 
-class BaseCodec(nn.Module):
+class BaseCodec(Module):
     def __init__(self, *args, **kwargs):
         raise NotImplementedError()
 

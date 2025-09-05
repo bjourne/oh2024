@@ -1,37 +1,22 @@
 from functools import partial
 
 from snn_signgd.functional_config import FunctionalConfig, Munch
-from snn_signgd.neuronal_dynamical_system.spikingjelly.generalization.membrane_equations.unary import Neuron as UnaryNeuron
+from snn_signgd.neuronal_dynamical_system.spikingjelly.generalization.membrane_equations.unary import Neuron #as UnaryNeuron
 
 from .membrane_equations import Codec, correction, BinaryNeuron
-from .maxpool import spike_mechanism_maximum
 
 import torch
 
 from torch.nn import Module
 
-# class MatMulNeuron(Module):
-#     def __init__(self, **neuronal_dynamics_kwargs):
-#         super().__init__()
-#         # Which neuron class?
-#         self.neuron = Neuron(**neuronal_dynamics_kwargs)
-#     def forward(self, x, y):
-#         # Naive implementation
-#         num_right_tokens = y.shape[-1]
+def spike_mechanism_maximum(neuron):
+    y = neuron.v
+    x1, x2  = neuron.x.x, neuron.x.y
 
-#         repeat_count = num_right_tokens
+    y = y.to(x1)
+    spike = torch.heaviside(y - torch.max(x1, x2), torch.zeros_like(x1))
 
-#         x = torch.unsqueeze(x, dim = -1)
-#         size = list(x.shape)
-#         size[-1] = repeat_count
-
-#         x, y = x.expand(*size), torch.unsqueeze(y, dim = -3)
-
-#         pair = TensorPair(x, y)
-
-#         output = self.neuron(pair).to(x)
-#         output = torch.sum(output, dim = -2)
-#         return output
+    return spike
 
 def spike_mechanism_gelu(neuron):
     y = neuron.v
@@ -73,15 +58,15 @@ def spike_mechanism_div(neuron):
 
     return spike
 
-def spike_mechanism_abs(neuron):
-    y = neuron.v
+# def spike_mechanism_abs(neuron):
+#     y = neuron.v
 
-    y = y.to(neuron.x)
-    spike = torch.heaviside(
-        y - neuron.x * torch.sign(neuron.x),
-        torch.zeros_like(y)
-    )
-    return spike
+#     y = y.to(neuron.x)
+#     spike = torch.heaviside(
+#         y - neuron.x * torch.sign(neuron.x),
+#         torch.zeros_like(y)
+#     )
+#     return spike
 
 def spike_mechanism_multiply(neuron):
     y = neuron.v
@@ -128,7 +113,7 @@ def construct_spiking_neurons_for_operators(
 ):
     return Munch(
         relu = FunctionalConfig(
-                module = UnaryNeuron,
+                module = Neuron,
                 submodules = Munch(
                     optimizer_input = moduleoptimizer_cfg,
                     optimizer_output = moduleoptimizer_cfg,
@@ -138,7 +123,7 @@ def construct_spiking_neurons_for_operators(
                 spike_mechanism = spike_mechanism_relu,
             ),
         leakyrelu = FunctionalConfig(
-                module = UnaryNeuron,
+                module = Neuron,
                 submodules = Munch(
                     optimizer_input = moduleoptimizer_cfg,
                     optimizer_output = moduleoptimizer_cfg,
@@ -158,7 +143,7 @@ def construct_spiking_neurons_for_operators(
                 spike_mechanism = spike_mechanism_maximum,
             ),
         gelu = FunctionalConfig(
-                module = UnaryNeuron,
+                module = Neuron,
                 submodules = Munch(
                     optimizer_input = moduleoptimizer_cfg,
                     optimizer_output = moduleoptimizer_cfg,
@@ -168,7 +153,7 @@ def construct_spiking_neurons_for_operators(
                 spike_mechanism = spike_mechanism_gelu,
             ),
         square = FunctionalConfig(
-                module = UnaryNeuron,
+                module = Neuron,
                 submodules = Munch(
                     optimizer_input = moduleoptimizer_cfg,
                     optimizer_output = moduleoptimizer_cfg,
@@ -188,7 +173,7 @@ def construct_spiking_neurons_for_operators(
                 spike_mechanism = spike_multiply_inverse_of_square_root,
             ),
         exp = FunctionalConfig(
-                module = UnaryNeuron,
+                module = Neuron,
                 submodules = Munch(
                     optimizer_input = moduleoptimizer_cfg,
                     optimizer_output = moduleoptimizer_cfg,
@@ -197,26 +182,6 @@ def construct_spiking_neurons_for_operators(
                 ),
                 spike_mechanism = spike_mechanism_exp,
             ),
-        abs = FunctionalConfig(
-                module = UnaryNeuron,
-                submodules = Munch(
-                    optimizer_input = moduleoptimizer_cfg,
-                    optimizer_output = moduleoptimizer_cfg,
-                    lr_scheduler_input = lr_scheduler_cfg,
-                    lr_scheduler_output = lr_scheduler_cfg,
-                ),
-                spike_mechanism = spike_mechanism_abs,
-            ),
-        # matmul = FunctionalConfig(
-        #         module = MatMulNeuron,
-        #         submodules = Munch(
-        #             optimizer_input = moduleoptimizer_cfg,
-        #             optimizer_output = moduleoptimizer_cfg,
-        #             lr_scheduler_input = lr_scheduler_cfg,
-        #             lr_scheduler_output = lr_scheduler_cfg,
-        #         ),
-        #         spike_mechanism = spike_mechanism_multiply,
-        #     ),
         div = FunctionalConfig(
                 module = BinaryNeuron,
                 submodules = Munch(
