@@ -67,20 +67,20 @@ def spike_mechanism_multiply(neuron):
 
     return spike
 
-def spike_mechanism_relu(neuron):
-    y = neuron.v
+def spike_mechanism_relu(n):
+    y = n.v
 
-    condition = neuron.x >= 0
-    trueval = y >= neuron.x
+    condition = n.x >= 0
+    trueval = y >= n.x
     falseval = y >= 0
 
-    # (neuron.x >= 0 && neuron.v >= neuron.x) || (!(neuron.x >= 0) && neuron.v >= 0)
+    # (n.x >= 0 && n.v >= n.x) || (!(n.x >= 0) && n.v >= 0)
     # Like Corollary 5.4 I think
     # Where is .v  and .x updated?
     spike = torch.logical_or(
         torch.logical_and(condition, trueval),
         torch.logical_and(torch.logical_not(condition), falseval)
-    ).to(neuron.x)
+    ).to(n.x)
 
     return spike
 

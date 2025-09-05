@@ -2,7 +2,7 @@ import torch
 from typing import Callable, List
 from spikingjelly.activation_based import neuron
 from ...psychoactive_substance import Psychoactive
-from ...template import BaseNeuron, BaseCodec
+from ...template import BaseCodec
 from itertools import count
 from munch import Munch
 from torch import nn
@@ -16,14 +16,30 @@ def relocate(src, dst):
 def sign(spike):
     return 2 *spike - 1
 
+class BaseNeuron(neuron.BaseNode, Psychoactive):
+    def __init__(self, **kwargs):
+        raise NotImplementedError()
+
+    def reset(self):
+        raise NotImplementedError()
+
+    def neuronal_charge(self, x):
+        raise NotImplementedError()
+
+    def neuronal_fire(self):
+        raise NotImplementedError()
+
+    def neuronal_reset(self, spike):
+        raise NotImplementedError()
+
 class Neuron(BaseNeuron):
     def __init__(
             self,
-            optimizer_input:Callable,
-            optimizer_output:Callable,
-            lr_scheduler_input:Callable,
-            lr_scheduler_output:Callable,
-            spike_mechanism:Callable,
+            optimizer_input,
+            optimizer_output,
+            lr_scheduler_input,
+            lr_scheduler_output,
+            spike_mechanism,
             **kwargs
     ):
         neuron.BaseNode.__init__(self, **kwargs)
