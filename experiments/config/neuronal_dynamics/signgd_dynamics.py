@@ -36,12 +36,12 @@ def spike_mechanism_maximum(neuron):
 
     return spike
 
-def spike_mechanism_gelu(neuron):
-    y = neuron.v
+def spike_mechanism_gelu(n):
+    y = n.v
 
-    y = y.to(neuron.x)
+    y = y.to(n.x)
     spike = torch.heaviside(
-        y - neuron.x * torch.sigmoid(1.702 * neuron.x),
+        y - n.x * torch.sigmoid(1.702 * n.x),
         torch.zeros_like(y)
     )
     return spike
@@ -51,38 +51,37 @@ def spike_mechanism_leakyrelu(n, neg_slope):
     y = n.v
 
     condition = n.x >= 0
-    trueval = torch.heaviside( y - n.x , torch.tensor([0.0]))
-    falseval = torch.heaviside( y - neg_slope * n.x, torch.tensor([0.0]))
+    trueval = torch.heaviside(n.v - n.x , torch.tensor([0.0]))
+    falseval = torch.heaviside(n.v - neg_slope * n.x, torch.tensor([0.0]))
     spike = condition * trueval + torch.logical_not(condition) * falseval
 
     return spike
 
 
-def spike_mechanism_multiply(neuron):
-    y = neuron.v
+def spike_mechanism_multiply(n):
+    #y = n.v
 
-    x1, x2  = neuron.x.x, neuron.x.y
-    y = y.to(x1)
-    spike = (y >= torch.mul(x1,x2)).to(y)
+    # x1, x2  = n.x.x, n.x.y
+    # y = y.to(x1)
+    # spike = (n.v >= torch.mul(n.x.x, n.x.y)).to(y)
 
-    return spike
+    return n.v >= torch.mul(n.x.x, n.x.y)
 
 def spike_mechanism_relu(n):
-    y = n.v
+    #y = n.v
 
-    condition = n.x >= 0
-    trueval = y >= n.x
-    falseval = y >= 0
+    #condition = n.x >= 0
+    #trueval = y >= n.x
+    #falseval = y >= 0
 
     # (n.x >= 0 && n.v >= n.x) || (!(n.x >= 0) && n.v >= 0)
     # Like Corollary 5.4 I think
     # Where is .v  and .x updated?
-    spike = torch.logical_or(
-        torch.logical_and(condition, trueval),
-        torch.logical_and(torch.logical_not(condition), falseval)
+    return torch.logical_or(
+        torch.logical_and(n.x >= 0, n.v >= n.x),
+        torch.logical_and(torch.logical_not(n.x >= 0), n.v >= 0)
     ).to(n.x)
-
-    return spike
+    #return spike
 
 def spike_mechanism_square(neuron):
     y = neuron.v

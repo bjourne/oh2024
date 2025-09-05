@@ -1,8 +1,6 @@
 import torch
-from typing import Callable, List
 from spikingjelly.activation_based import neuron
 from ...psychoactive_substance import Psychoactive
-from ...template import BaseCodec
 from itertools import count
 from munch import Munch
 from torch import nn
@@ -14,35 +12,35 @@ def relocate(src, dst):
     return src
 
 def sign(spike):
-    return 2 *spike - 1
+    return 2 * spike - 1
 
 def make_opt():
     return SGDModule(lr = 0.15, inplace = False)
 
 def make_sched():
-    return ExponentialScheduler(gamma = 0.95, eager_evaluation = True)
+    return ExponentialScheduler() # gamma = 0.95, eager_evaluation = True)
 
-class BaseNeuron(neuron.BaseNode, Psychoactive):
-    def __init__(self, **kwargs):
-        raise NotImplementedError()
+# class BaseNeuron(neuron.BaseNode, Psychoactive):
+#     def __init__(self, **kwargs):
+#         raise NotImplementedError()
 
-    def reset(self):
-        raise NotImplementedError()
+#     def reset(self):
+#         raise NotImplementedError()
 
-    def neuronal_charge(self, x):
-        raise NotImplementedError()
+#     def neuronal_charge(self, x):
+#         raise NotImplementedError()
 
-    def neuronal_fire(self):
-        raise NotImplementedError()
+#     def neuronal_fire(self):
+#         raise NotImplementedError()
 
-    def neuronal_reset(self, spike):
-        raise NotImplementedError()
+#     def neuronal_reset(self, spike):
+#         raise NotImplementedError()
 
 class ExponentialScheduler:
-    def __init__(self, gamma: float, eager_evaluation: bool = False):
-        self.gamma = gamma
+    def __init__(self): #, gamma: float, eager_evaluation: bool = False):
+        self.gamma = 0.95
         self.lr = None
-        self.eager_evaluation = eager_evaluation
+        #self.eager_evaluation = True
 
     def reset(self, moduleoptimizer):
         self.moduleoptimizer = moduleoptimizer
@@ -51,16 +49,16 @@ class ExponentialScheduler:
         else:
             self.moduleoptimizer.config['lr'] = self.lr
 
-        if self.eager_evaluation:
-            M = 1024
-            self.lrs = [self.lr * (self.gamma ** i) for i in range(M)]
+        #if self.eager_evaluation:
+        M = 1024
+        self.lrs = [self.lr * (self.gamma ** i) for i in range(M)]
         self.timestep = 1
 
     def schedule(self):
-        if self.eager_evaluation:
-            self.moduleoptimizer.config['lr'] = self.lrs[self.timestep]
-        else:
-            self.moduleoptimizer.config['lr'] *= self.gamma
+        #if self.eager_evaluation:
+        self.moduleoptimizer.config['lr'] = self.lrs[self.timestep]
+        # else:
+        #     self.moduleoptimizer.config['lr'] *= self.gamma
         self.timestep += 1
 
 class SGDModule:
@@ -123,16 +121,18 @@ class SGDModule:
             else:
                 d_p = d_p + param * weight_decay # Not an inplace operation
 
-        if momentum != 0:
-            if buf is None:
-                buf = torch.clone(d_p).detach()
-            else:
-                buf = momentum * buf + (1-dampening) * d_p
+        assert momentum == 0
 
-            if nesterov:
-                d_p = d_p + buf * momentum
-            else:
-                d_p = buf
+        # if momentum != 0:
+        #     if buf is None:
+        #         buf = torch.clone(d_p).detach()
+        #     else:
+        #         buf = momentum * buf + (1-dampening) * d_p
+
+        #     if nesterov:
+        #         d_p = d_p + buf * momentum
+        #     else:
+        #         d_p = buf
 
         if inplace:
             d_p.multiply_(-lr)
@@ -147,7 +147,7 @@ class SGDModule:
         }
         return state
 
-class Neuron(BaseNeuron):
+class Neuron(neuron.BaseNode, Psychoactive):
     def __init__(self, spike_mechanism, **kwargs):
         neuron.BaseNode.__init__(self, **kwargs)
         Psychoactive.__init__(self)
@@ -171,20 +171,35 @@ class Neuron(BaseNeuron):
 
         self.v = 0.0
 
-    def neuronal_charge(self, x: torch.Tensor):
+    def neuronal_charge(self, x):
         gradient = 2 * x - relocate(self.offset, x)
 
         self.x = self.optimizer_input.step(grad = gradient)
         self.lr_scheduler_input.schedule()
 
-    def neuronal_fire(self): # Compute gradient
+    def neuronal_fire(self):
         return self.spike_mechanism(self)
 
     def neuronal_reset(self, spike):
-        gradient = sign(spike)
+        gradient = 2 * spike - 1
 
-        self.v = self.optimizer_output.step(grad = gradient)
+        self.v = self.optimizer_output.step(gradient)
         self.lr_scheduler_output.schedule()
+
+class BaseCodec(Module):
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def encodings(self) -> dict:
+        raise NotImplementedError()
+
+    def encode(self, x):
+        encodings = self.encodings()
+        assert self.choice in encodings.keys(), list(encodings.keys())
+        return encodings[self.choice](x)
+
+    def decode(self, state, spikes, timestep:int):
+        raise NotImplementedError()
 
 class Codec(BaseCodec, Module):
     def __init__(self, choice:str, statistics:dict = None):
@@ -208,7 +223,7 @@ class Codec(BaseCodec, Module):
         return {
             'float': self.encode_template(self.grad_float),#self.float_encode,
             'spike': self.encode_template(self.grad_spike),#self.spike_encode,
-            'stochastic_spike': self.encode_template(self.grad_stochastic_spike),
+            #'stochastic_spike': self.encode_template(self.grad_stochastic_spike),
         }
 
     def reset(self):
@@ -228,10 +243,10 @@ class Codec(BaseCodec, Module):
         gradient = sign(spike)
         return gradient, spike
 
-    def grad_stochastic_spike(self, y, x):
-        spike = torch.bernoulli(torch.sigmoid( (y - x) )) # Loss function L(y;x) = \Vert y - x \Vert_2^2
-        gradient = sign(spike)
-        return gradient, spike
+    # def grad_stochastic_spike(self, y, x):
+    #     spike = torch.bernoulli(torch.sigmoid( (y - x) )) # Loss function L(y;x) = \Vert y - x \Vert_2^2
+    #     gradient = sign(spike)
+    #     return gradient, spike
 
     def encode_template(self, gradient_fn):
         def encode_fn(x):
