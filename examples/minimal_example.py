@@ -36,16 +36,9 @@ if __name__ == '__main__':
     batch_size = 256
     timestamps = [1, 2, 4, 8, 16, 32, 64]
 
-    # CHANGE THIS LINE TO TEST DIFFERENT DYNAMICS
+    # only signgd ok
+    from signgd_dynamics import config
     dynamics_type = 'signgd' # 'subgradient'
-    match dynamics_type:
-        case 'signgd':
-            from signgd_dynamics import config
-        case 'subgradient':
-            from subgradient_dynamics import config
-        case _:
-            raise ValueError(f"Unknown dynamics type: {dynamics_type}, must be 'signgd' or 'subgradient'")
-
     ann = load_model(
         category_name = 'resnet',
         vgg_default = 'VGG16',
