@@ -1,20 +1,21 @@
 from munch import Munch
 
 class FunctionalConfig(Munch):
-    def __init__(self, module, submodules = None, **kwargs):
+    def __init__(self, module, **kwargs):
         super().__init__(**kwargs)
         self.module = module
-        self.submodules = submodules
+        #self.submodules = submodules
+
     def __call__(self,*args, **kwargs):
         kwargs_default = self.toDict()
-        if self.submodules is not None:
-            kwargs_default.update({k:v() for k, v in self.submodules.items()})
+        # if self.submodules is not None:
+        #     kwargs_default.update({k:v() for k, v in self.submodules.items()})
         kwargs_input = kwargs
         kwargs_default.update(kwargs_input)
         kwargs_default.pop('module')
-        kwargs_default.pop('submodules')
+        #kwargs_default.pop('submodules')
         return self.module(*args, **kwargs_default)
-    
+
 import importlib.util
 import sys
 import uuid
